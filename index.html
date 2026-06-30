@@ -6,80 +6,235 @@
   <title>نظام الحضور الذكي - تسجيل الدخول</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-    .login-wrapper { width: 100%; max-width: 450px; padding: 20px; }
-    .header-section { text-align: center; margin-bottom: 20px; }
-    .logo-circle { width: 60px; height: 60px; background-color: #1d4ed8; border-radius: 50%; margin: 0 auto 15px auto; }
-    .header-title { font-size: 28px; color: #1f2937; margin: 0; font-weight: bold; }
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      margin: 0; 
+      padding: 0; 
+      background-color: #f4f6f9; 
+      display: flex; 
+      flex-direction: column; 
+      min-height: 100vh; 
+    }
     
-    /* نظام التبويبات */
-    .tabs { display: flex; background: #e5e7eb; border-radius: 8px; margin-bottom: 20px; padding: 5px; }
-    .tab-btn { flex: 1; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: #4b5563; background: transparent; transition: 0.3s; }
-    .tab-btn.active { background: white; color: #1d4ed8; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    /* الجزء العلوي الكحلي */
+    .top-banner {
+      background-color: #1a2942; c);/* لون كحلي فخم مطابق للصورة */
+      color: white;
+      text-align: center;
+      padding: 40px 20px 80px 20px;
+    }
+    
+    .custom-logo { 
+      width: 100px; 
+      height: 100px; 
+      border-radius: 50%; 
+      object-fit: cover; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
+      margin: 0 auto 15px auto; 
+      display: block; 
+      border: 3px solid rgba(255, 255, 255, 0.1); 
+    }
+    
+    .header-title { 
+      font-size: 26px; 
+      margin: 0 0 5px 0; 
+      font-weight: bold; 
+      letter-spacing: 0.5px;
+    }
+    
+    .header-subtitle {
+      font-size: 14px;
+      color: #94a3b8;
+      margin: 0;
+    }
 
-    .login-card { background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 30px; border-top: 4px solid #1d4ed8; }
+    /* منطقة الفورم السفلية */
+    .bottom-area {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 20px;
+    }
+
+    .login-card { 
+      background-color: #ffffff; 
+      border-radius: 12px; 
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08); 
+      padding: 30px; 
+      width: 100%;
+      max-width: 420px;
+      margin-top: -50px; /* لرفع الكارت فوق اللونين */
+      box-sizing: border-box;
+      z-index: 10;
+    }
+    
+    /* نظام التبويبات الجديد */
+    .tabs { 
+      display: flex; 
+      background: #f1f5f9; 
+      border-radius: 8px; 
+      margin-bottom: 25px; 
+      padding: 5px; 
+    }
+    .tab-btn { 
+      flex: 1; 
+      padding: 12px; 
+      border: none; 
+      border-radius: 6px; 
+      cursor: pointer; 
+      font-weight: bold; 
+      color: #64748b; 
+      background: transparent; 
+      transition: all 0.3s ease; 
+      font-size: 15px;
+    }
+    .tab-btn.active { 
+      background: white; 
+      color: #1a2942; 
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+    }
+
     .form-section { display: none; }
-    .form-section.active { display: block; }
+    .form-section.active { display: block; animation: fadeIn 0.4s; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     
     .input-group { margin-bottom: 20px; }
-    .input-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #4b5563; font-size: 14px; }
+    .input-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #334155; font-size: 13px; }
     .input-wrapper { position: relative; }
-    .input-wrapper i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
-    .input-wrapper input { width: 100%; padding: 12px 15px 12px 40px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; }
+    .input-wrapper i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
+    .input-wrapper input { 
+      width: 100%; 
+      padding: 12px 15px 12px 40px; 
+      border: 1px solid #cbd5e1; 
+      border-radius: 6px; 
+      box-sizing: border-box; 
+      font-family: inherit;
+      background-color: #f8fafc;
+      transition: border 0.3s;
+    }
+    .input-wrapper input:focus { outline: none; border-color: #1a2942; background-color: #fff; }
     
-    .submit-btn { width: 100%; padding: 12px; background-color: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
-    .footer-links { text-align: center; margin-top: 20px; }
-    .footer-links a { display: block; color: #3b82f6; text-decoration: none; margin-bottom: 10px; }
+    .submit-btn { 
+      width: 100%; 
+      padding: 14px; 
+      background-color: #1a2942; 
+      color: white; 
+      border: none; 
+      border-radius: 6px; 
+      font-weight: bold; 
+      font-size: 15px;
+      cursor: pointer; 
+      transition: background 0.3s;
+    }
+    .submit-btn:hover { background-color: #0f172a; }
+    
+    .action-links { 
+      display: flex; 
+      justify-content: space-between; 
+      margin-top: 20px; 
+      font-size: 13px;
+    }
+    .action-links a { color: #3b82f6; text-decoration: none; font-weight: bold; }
+    .action-links a.muted { color: #64748b; }
+
+    /* حقوق الملكية */
+    .copyright-footer { 
+      text-align: center; 
+      font-size: 12px; 
+      color: #94a3b8; 
+      font-weight: bold; 
+      padding: 20px;
+      margin-top: auto;
+    }
 
     /* المودال */
-    .modal { display: none; position: fixed; top:0; left:0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 100; }
-    .modal-content { background: white; padding: 30px; border-radius: 10px; text-align: center; max-width: 300px; }
+    .modal { display: none; position: fixed; top:0; left:0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 100; }
+    .modal-content { background: white; padding: 30px; border-radius: 12px; text-align: center; max-width: 320px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
   </style>
 </head>
 <body>
 
-  <div class="login-wrapper">
-    <div class="header-section">
-      <div class="logo-circle"></div>
-      <h1 class="header-title">نظام الحضور الذكي</h1>
-    </div>
+  <div class="top-banner">
+    <img src="623.jpg" alt="شعار النظام" class="custom-logo" onerror="this.src='https://via.placeholder.com/100/1a2942/ffffff?text=Logo'">
+    <h1 class="header-title">نظام الحضور الذكي</h1>
+    <p class="header-subtitle">   إهداء وتطوير الأستاذ محمد سيف الاسلام </p>
+  </div>
 
-    <div class="tabs">
-      <button class="tab-btn active" onclick="switchForm('admin', this)">الإدارة</button>
-      <button class="tab-btn" onclick="switchForm('teacher', this)">المعلمون</button>
-    </div>
-
+  <div class="bottom-area">
     <div class="login-card">
+      
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchForm('admin', this)">الإدارة</button>
+        <button class="tab-btn" onclick="switchForm('teacher', this)">المعلمون</button>
+      </div>
+
       <div id="admin-form" class="form-section active">
         <form onsubmit="login(event, 'admin')">
-          <div class="input-group"><label>اسم المستخدم</label><div class="input-wrapper"><input type="text" id="adminUser" required><i class="fa-regular fa-user"></i></div></div>
-          <div class="input-group"><label>كلمة المرور</label><div class="input-wrapper"><input type="password" id="adminPass" required><i class="fa-solid fa-lock"></i></div></div>
-          <button type="submit" class="submit-btn" id="adminBtn">دخول الإدارة</button>
+          <div class="input-group">
+            <label>اسم المستخدم</label>
+            <div class="input-wrapper">
+              <input type="text" id="adminUser" required placeholder="أدخل اسم المستخدم">
+              <i class="fa-regular fa-user"></i>
+            </div>
+          </div>
+          <div class="input-group">
+            <label>كلمة المرور</label>
+            <div class="input-wrapper">
+              <input type="password" id="adminPass" required placeholder="••••••••">
+              <i class="fa-solid fa-lock"></i>
+            </div>
+          </div>
+          <button type="submit" class="submit-btn" id="adminBtn">تسجيل الدخول للإدارة</button>
         </form>
       </div>
 
       <div id="teacher-form" class="form-section">
         <form onsubmit="login(event, 'teacher')">
-          <div class="input-group"><label>كود المدرسة</label><div class="input-wrapper"><input type="text" id="schoolCode" required><i class="fa-solid fa-school"></i></div></div>
-          <div class="input-group"><label>كود المعلم</label><div class="input-wrapper"><input type="text" id="teacherCode" required><i class="fa-solid fa-id-card"></i></div></div>
-          <div class="input-group"><label>كلمة المرور</label><div class="input-wrapper"><input type="password" id="teacherPass" required><i class="fa-solid fa-lock"></i></div></div>
-          <button type="submit" class="submit-btn" id="teacherBtn">دخول المعلم</button>
+          <div class="input-group">
+            <label>كود المدرسة</label>
+            <div class="input-wrapper">
+              <input type="text" id="schoolCode" required placeholder="مثال: SCH-1782310109129	">
+              <i class="fa-solid fa-school"></i>
+            </div>
+          </div>
+          <div class="input-group">
+            <label>كود المعلم</label>
+            <div class="input-wrapper">
+              <input type="text" id="teacherCode" required placeholder="أدخل كود المعلم">
+              <i class="fa-solid fa-id-card"></i>
+            </div>
+          </div>
+          <div class="input-group">
+            <label>كلمة المرور</label>
+            <div class="input-wrapper">
+              <input type="password" id="teacherPass" required placeholder="••••••••">
+              <i class="fa-solid fa-lock"></i>
+            </div>
+          </div>
+          <button type="submit" class="submit-btn" id="teacherBtn">تسجيل الدخول للمعلم</button>
         </form>
       </div>
-    </div>
 
-    <div class="footer-links">
-      <a href="register.html">إنشاء حساب مدرسة جديد</a>
-      <a href="#" style="color:#6b7280" onclick="document.getElementById('modal').style.display='flex'">نسيت الرقم السري؟</a>
+      <div class="action-links">
+        <a href="register.html">إنشاء حساب مدرسة</a>
+        <a href="#" class="muted" onclick="document.getElementById('modal').style.display='flex'">نسيت كلمة المرور؟</a>
+      </div>
+
     </div>
+  </div>
+
+  <div class="copyright-footer">
+    جميع الحقوق محفوظة للمصمم - للاستفسار والمقترحات يرجى المراسلة على الرقم <span style="color: #3b82f6; direction: ltr; display: inline-block;">01152010087</span>
   </div>
 
   <div id="modal" class="modal">
     <div class="modal-content">
-      <h3>الدعم الفني</h3>
-      <p>يرجى الاتصال بالدعم الفني أو المراسلة على الرقم:</p>
-      <h2 style="color:#1d4ed8;">01152010087</h2>
-      <button onclick="document.getElementById('modal').style.display='none'" style="padding:10px 20px; cursor:pointer;">إغلاق</button>
+      <i class="fa-solid fa-headset" style="font-size: 40px; color: #1a2942; margin-bottom: 15px;"></i>
+      <h3 style="margin-top:0; color: #1a2942;">الدعم الفني</h3>
+      <p style="color: #64748b; font-size: 14px; line-height: 1.5;">يرجى الاتصال بالدعم الفني أو المراسلة عبر الواتساب على الرقم:</p>
+      <h2 style="color:#3b82f6; margin: 15px 0; direction: ltr;">01152010087</h2>
+      <button onclick="document.getElementById('modal').style.display='none'" style="width:100%; padding:10px; background:#f1f5f9; color:#475569; border:none; border-radius:6px; font-weight:bold; cursor:pointer; margin-top:10px;">إغلاق</button>
     </div>
   </div>
 
@@ -96,7 +251,7 @@
     function login(e, type) {
       e.preventDefault();
       const btn = e.target.querySelector('button');
-      btn.disabled = true; btn.innerText = "جاري...";
+      btn.disabled = true; btn.innerText = "جاري التحقق...";
       
       let payload = {};
       if(type === 'admin') {
@@ -114,8 +269,8 @@
           } else {
              window.location.href = `teacher_dashboard.html?schoolId=${document.getElementById('schoolCode').value}&teacherCode=${res.teacherCode}&teacherName=${res.teacherName}`;
           }
-        } else { alert(res.message); btn.disabled = false; btn.innerText = "دخول"; }
-      }).catch(() => { alert("خطأ اتصال"); btn.disabled = false; btn.innerText = "دخول"; });
+        } else { alert(res.message); btn.disabled = false; btn.innerText = (type === 'admin') ? "تسجيل الدخول للإدارة" : "تسجيل الدخول للمعلم"; }
+      }).catch(() => { alert("حدث خطأ في الاتصال بالخادم"); btn.disabled = false; btn.innerText = (type === 'admin') ? "تسجيل الدخول للإدارة" : "تسجيل الدخول للمعلم"; });
     }
   </script>
 </body>
