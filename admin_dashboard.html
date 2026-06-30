@@ -1,0 +1,256 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة تحكم مدير النظام</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f3f4f6;
+      margin: 0;
+      padding: 0;
+    }
+    /* شريط التنقل العلوي */
+    .navbar {
+      background-color: #1d4ed8;
+      color: white;
+      padding: 15px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .navbar-title {
+      font-size: 20px;
+      font-weight: bold;
+    }
+    .logout-btn {
+      background-color: #ef4444;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .logout-btn:hover { background-color: #dc2626; }
+    
+    /* المحتوى الرئيسي */
+    .container {
+      padding: 30px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .page-title {
+      font-size: 24px;
+      color: #1f2937;
+      margin: 0;
+    }
+    .add-btn {
+      background-color: #10b981;
+      color: white;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: bold;
+      display: inline-block;
+    }
+    .add-btn:hover { background-color: #059669; }
+
+    /* تصميم الجدول */
+    .table-card {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: right;
+    }
+    thead {
+      background-color: #f9fafb;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    th {
+      padding: 15px;
+      font-size: 14px;
+      color: #4b5563;
+    }
+    td {
+      padding: 15px;
+      border-bottom: 1px solid #e5e7eb;
+      color: #1f2937;
+      font-size: 14px;
+    }
+    tbody tr:hover {
+      background-color: #f3f4f6;
+    }
+    
+    /* أزرار الإجراءات */
+    .action-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      margin-left: 10px;
+      color: #6b7280;
+    }
+    .action-btn:hover { color: #1d4ed8; }
+    .delete-btn:hover { color: #ef4444; }
+    
+    #loadingMsg {
+      text-align: center;
+      padding: 30px;
+      font-size: 18px;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="navbar">
+    <div class="navbar-title"><i class="fa-solid fa-shield-halved"></i> لوحة تحكم مدير النظام الشاملة</div>
+    <button class="logout-btn" onclick="window.location.href='index.html'">تسجيل خروج <i class="fa-solid fa-right-from-bracket"></i></button>
+  </div>
+
+  <div class="container">
+    <div class="page-header">
+      <h2 class="page-title">المدارس المسجلة في النظام</h2>
+      <a href="register.html" class="add-btn"><i class="fa-solid fa-plus"></i> إضافة مدرسة جديدة</a>
+    </div>
+
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>كود المدرسة</th>
+            <th>اسم المدرسة</th>
+            <th>المحافظة / الإدارة</th>
+            <th>النوع والمرحلة</th>
+            <th>بيانات الدخول (يوزر / باسورد)</th>
+            <th>إجراءات</th>
+          </tr>
+        </thead>
+        <tbody id="schoolsTableBody">
+          </tbody>
+      </table>
+      <div id="loadingMsg"><i class="fa-solid fa-spinner fa-spin"></i> جاري تحميل بيانات المدارس...</div>
+    </div>
+  </div>
+
+  <script>
+    // الرابط الثابت بتاعك شغال هنا ومربوط بالنسخة الجديدة
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby0Q4NV6I6yXSdsjmbDvjQ6apv-9vTLEM4EolQfl3kXwl2asjutPpjexgjIi61QePly5Q/exec"; 
+
+    document.addEventListener("DOMContentLoaded", function() {
+      fetchSchools();
+    });
+
+    function fetchSchools() {
+      const payload = { action: "getSchools" };
+
+      fetch(WEB_APP_URL, {
+        method: 'POST', body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow'
+      })
+      .then(response => response.json())
+      .then(result => {
+        document.getElementById('loadingMsg').style.display = 'none'; 
+        const tbody = document.getElementById('schoolsTableBody');
+        tbody.innerHTML = ""; 
+        
+        if (result.status === "success") {
+          if (result.data.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='6' style='text-align:center;'>لا توجد مدارس مسجلة حالياً.</td></tr>";
+            return;
+          }
+
+          result.data.forEach(school => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td><span style="background:#e5e7eb; padding:3px 8px; border-radius:4px; font-weight:bold;">${school.schoolId}</span></td>
+              <td style="font-weight:bold; color:#1d4ed8;">${school.schoolName}</td>
+              <td>${school.governorate} - ${school.directorate}</td>
+              <td>${school.type} (${school.stage})</td>
+              <td>
+                <i class="fa-solid fa-user" style="color:#9ca3af; font-size:12px;"></i> ${school.managerUser} <br>
+                <i class="fa-solid fa-lock" style="color:#9ca3af; font-size:12px;"></i> ${school.managerPass}
+              </td>
+              <td>
+                <button class="action-btn" title="تعديل بيانات الدخول" onclick="editCredentials('${school.schoolId}', '${school.managerUser}', '${school.managerPass}')"><i class="fa-solid fa-pen"></i></button>
+                <button class="action-btn delete-btn" title="حذف المدرسة" onclick="deleteSchool('${school.schoolId}', '${school.schoolName}')"><i class="fa-solid fa-trash"></i></button>
+                <button class="action-btn" title="دخول للوحة المدرسة" style="color:#10b981;" onclick="openSchoolDashboard('${school.schoolId}')"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+        } else {
+          tbody.innerHTML = `<tr><td colspan='6' style='color:red; text-align:center;'>${result.message}</td></tr>`;
+        }
+      })
+      .catch(error => {
+        document.getElementById('loadingMsg').innerHTML = "<span style='color:red;'>حدث خطأ في الاتصال بالخادم.</span>";
+      });
+    }
+
+    // دالة التعديل
+    function editCredentials(schoolId, oldUser, oldPass) {
+      let newUser = prompt("أدخل اسم المستخدم الجديد:", oldUser);
+      if (newUser === null || newUser.trim() === "") return;
+
+      let newPass = prompt("أدخل كلمة المرور الجديدة:", oldPass);
+      if (newPass === null || newPass.trim() === "") return;
+
+      if(confirm("هل أنت متأكد من تغيير بيانات الدخول؟")) {
+        const payload = {
+          action: "updateCredentials",
+          data: { schoolId: schoolId, newUser: newUser, newPass: newPass }
+        };
+        sendRequest(payload, "جاري التحديث...");
+      }
+    }
+
+    // دالة الحذف
+    function deleteSchool(schoolId, schoolName) {
+      if(confirm(`تحذير خطير!\nهل أنت متأكد من حذف مدرسة (${schoolName}) نهائياً؟\nسيتم نقل ملف قاعدة بياناتها إلى سلة المهملات.`)) {
+        const payload = {
+          action: "deleteSchool",
+          data: { schoolId: schoolId }
+        };
+        sendRequest(payload, "جاري الحذف...");
+      }
+    }
+
+    // دالة الدخول للوحة المدرسة الفرعية (الجديدة)
+    function openSchoolDashboard(schoolId) {
+      window.location.href = "school_dashboard.html?id=" + schoolId;
+    }
+
+    function sendRequest(payload, loadingMessage) {
+      document.getElementById('loadingMsg').style.display = 'block';
+      document.getElementById('loadingMsg').innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${loadingMessage}`;
+      
+      fetch(WEB_APP_URL, {
+        method: 'POST', body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow'
+      })
+      .then(response => response.json())
+      .then(result => {
+        alert(result.message);
+        fetchSchools(); 
+      })
+      .catch(error => alert("حدث خطأ في الاتصال بالخادم!"));
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,281 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>بوابة المعلم - الحضور الذكي</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f8fafc; margin: 0; padding: 15px; }
+    
+    /* تصميم الشريط العلوي الجديد وزر الخروج */
+    .top-header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; max-width: 600px; margin-left: auto; margin-right: auto; }
+    .header-info { text-align: right; }
+    .header-info h2 { margin: 0 0 5px 0; color: #1e293b; font-size: 20px; }
+    .logout-btn { background: #ef4444; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; font-family: inherit; font-size: 14px; }
+    .logout-btn:hover { background: #dc2626; }
+
+    .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }
+    
+    select, .btn { width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 16px; font-weight: bold; outline: none; }
+    .btn { background: #3b82f6; color: white; border: none; cursor: pointer; transition: 0.3s; }
+    .btn-success { background: #10b981; margin-top: 20px; }
+    .btn-success:hover { background: #059669; }
+    
+    #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 15px; display: none; border: 3px solid #1e293b; }
+    
+    .students-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+    .student-item { padding: 12px; border-radius: 6px; text-align: center; font-weight: bold; color: white; transition: background 0.3s; font-size: 14px; display: flex; align-items: center; justify-content: space-between; }
+    
+    /* ألوان حالات الطلاب */
+    .status-absent { background: #ef4444; } /* أحمر للغياب */
+    .status-present { background: #10b981; } /* أخضر للحضور */
+    
+    /* الوميض */
+    .flash-overlay { position: fixed; top:0; left:0; width:100%; height:100%; pointer-events: none; opacity: 0; z-index: 9999; transition: opacity 0.1s; }
+    .flash-green { background-color: rgba(16, 185, 129, 0.4); opacity: 1; }
+    .flash-red { background-color: rgba(239, 68, 68, 0.4); opacity: 1; }
+
+    #loading { text-align: center; font-weight: bold; color: #64748b; display: none; }
+  </style>
+</head>
+<body>
+
+  <audio id="beepSuccess" src="https://actions.google.com/sounds/v1/ui/positive_acknowledge.ogg" preload="auto"></audio>
+  <audio id="beepError" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
+
+  <div id="flashOverlay" class="flash-overlay"></div>
+
+  <div class="top-header">
+    <div class="header-info">
+      <h2><i class="fa-solid fa-chalkboard-user"></i> بوابة المعلم</h2>
+      <p style="margin:0; color:#64748b; font-weight:bold;" id="teacherNameDisplay">مرحباً بك</p>
+    </div>
+    <button class="logout-btn" onclick="window.location.href='index.html'">
+      تسجيل خروج <i class="fa-solid fa-right-from-bracket"></i>
+    </button>
+  </div>
+
+  <div class="card">
+    <div style="display: flex; gap: 10px;">
+      <select id="classSelect" onchange="fetchClassStudents()">
+        <option value="">-- اختر الفصل --</option>
+      </select>
+
+      <select id="periodSelect">
+        <option value="">-- اختر الحصة --</option>
+        <option value="الحصة الأولى">الحصة 1</option>
+        <option value="الحصة الثانية">الحصة 2</option>
+        <option value="الحصة الثالثة">الحصة 3</option>
+        <option value="الحصة الرابعة">الحصة 4</option>
+        <option value="الحصة الخامسة">الحصة 5</option>
+        <option value="الحصة السادسة">الحصة 6</option>
+        <option value="الحصة السابعة">الحصة 7</option>
+        <option value="الحصة الثامنة">الحصة 8</option>
+      </select>
+    </div>
+
+    <button class="btn" id="startScanBtn" onclick="toggleScanner()"><i class="fa-solid fa-camera"></i> تشغيل الكاميرا لمسح الباركود</button>
+    
+    <div id="reader"></div>
+
+    <div id="loading">جاري جلب قائمة الطلاب...</div>
+    
+    <div class="students-grid" id="studentsContainer"></div>
+
+    <button class="btn btn-success" onclick="submitAbsences()" id="submitBtn" style="display: none;">
+      <i class="fa-solid fa-paper-plane"></i> تسجيل الغياب وإرسال للإدارة
+    </button>
+  </div>
+
+  <script>
+    // ========= ضع رابط الـ Web App الخاص بك هنا =========
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby0Q4NV6I6yXSdsjmbDvjQ6apv-9vTLEM4EolQfl3kXwl2asjutPpjexgjIi61QePly5Q/exec";
+    
+    let allStudents = [];
+    let scannedBarcodes = new Set();
+    let html5QrcodeScanner = null;
+    let isScanning = false;
+    let scanTimeout = false; 
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const schoolId = urlParams.get('schoolId');
+    const teacherName = urlParams.get('teacherName');
+    
+    if(teacherName) document.getElementById('teacherNameDisplay').innerText = "مرحباً: أ. " + teacherName;
+
+    window.onload = () => {
+      fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getClasses", data: { schoolId: schoolId } }) })
+      .then(r => r.json()).then(res => {
+        const select = document.getElementById('classSelect');
+        if(res.status === "success") {
+          res.data.forEach(cls => { select.innerHTML += `<option value="${cls.className}">${cls.className}</option>`; });
+        }
+      });
+    };
+
+    function fetchClassStudents() {
+      const className = document.getElementById('classSelect').value;
+      const container = document.getElementById('studentsContainer');
+      const submitBtn = document.getElementById('submitBtn');
+      
+      container.innerHTML = "";
+      allStudents = [];
+      scannedBarcodes.clear();
+      submitBtn.style.display = "none";
+
+      if(!className) return;
+
+      document.getElementById('loading').style.display = "block";
+      
+      fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getStudentsByClass", data: { schoolId: schoolId, className: className } }) })
+      .then(r => r.json()).then(res => {
+        document.getElementById('loading').style.display = "none";
+        if(res.status === "success") {
+          allStudents = res.data;
+          renderStudents();
+          submitBtn.style.display = "block";
+        }
+      });
+    }
+
+    function renderStudents() {
+      const container = document.getElementById('studentsContainer');
+      container.innerHTML = "";
+      allStudents.forEach(stu => {
+        const isScanned = scannedBarcodes.has(stu.barcode);
+        const div = document.createElement('div');
+        div.className = "student-item " + (isScanned ? "status-present" : "status-absent");
+        div.id = "stu-" + stu.barcode;
+        
+        div.innerHTML = `
+          <span>${stu.name}</span>
+          <i class="fa-solid ${isScanned ? 'fa-check' : 'fa-xmark'}"></i>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function toggleScanner() {
+      const className = document.getElementById('classSelect').value;
+      const period = document.getElementById('periodSelect').value;
+      
+      if(!className || !period) { alert("يرجى اختيار الفصل والحصة أولاً!"); return; }
+
+      if(!isScanning) {
+        document.getElementById('reader').style.display = "block";
+        html5QrcodeScanner = new Html5Qrcode("reader");
+        html5QrcodeScanner.start(
+          { facingMode: "environment" }, 
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          onScanSuccess
+        ).catch(err => {
+          alert("تعذر الوصول للكاميرا، تأكد من إعطاء الصلاحيات للمتصفح.");
+        });
+        
+        document.getElementById('startScanBtn').innerHTML = '<i class="fa-solid fa-stop"></i> إيقاف الكاميرا';
+        document.getElementById('startScanBtn').style.background = "#ef4444";
+        isScanning = true;
+      } else {
+        if (html5QrcodeScanner) {
+          html5QrcodeScanner.stop().then(() => {
+            html5QrcodeScanner.clear(); 
+            forceStopCameraTracks(); 
+            resetCameraUI();
+          }).catch(err => {
+            forceStopCameraTracks();
+            resetCameraUI();
+          });
+        } else {
+          forceStopCameraTracks();
+          resetCameraUI();
+        }
+      }
+    }
+
+    function forceStopCameraTracks() {
+      const videoElements = document.querySelectorAll('video');
+      videoElements.forEach(video => {
+        if (video.srcObject) {
+          const tracks = video.srcObject.getTracks();
+          tracks.forEach(track => track.stop()); 
+          video.srcObject = null;
+        }
+      });
+    }
+
+    function resetCameraUI() {
+      document.getElementById('reader').style.display = "none";
+      document.getElementById('startScanBtn').innerHTML = '<i class="fa-solid fa-camera"></i> تشغيل الكاميرا لمسح الباركود';
+      document.getElementById('startScanBtn').style.background = "#3b82f6";
+      isScanning = false;
+    }
+
+    function onScanSuccess(decodedText) {
+      if(scanTimeout) return; 
+      scanTimeout = true;
+      setTimeout(() => scanTimeout = false, 1500); 
+
+      const barcode = decodedText.trim();
+      const studentExists = allStudents.find(s => s.barcode === barcode);
+
+      if(studentExists) {
+        if(scannedBarcodes.has(barcode)) {
+          triggerFlash('red');
+          document.getElementById('beepError').play();
+          alert(`مكرر! الطالب (${studentExists.name}) تم تسجيل حضوره بالفعل.`);
+        } else {
+          scannedBarcodes.add(barcode);
+          triggerFlash('green');
+          document.getElementById('beepSuccess').play();
+          renderStudents(); 
+        }
+      } else {
+        triggerFlash('red');
+        document.getElementById('beepError').play();
+        alert("باركود خاطئ أو الطالب غير مقيد بهذا الفصل!");
+      }
+    }
+
+    function triggerFlash(type) {
+      const overlay = document.getElementById('flashOverlay');
+      overlay.className = 'flash-overlay flash-' + type;
+      setTimeout(() => overlay.className = 'flash-overlay', 200);
+    }
+
+    function submitAbsences() {
+      const className = document.getElementById('classSelect').value;
+      const period = document.getElementById('periodSelect').value;
+      if(!period) { alert("يرجى اختيار الحصة!"); return; }
+
+      const absentStudents = allStudents.filter(s => !scannedBarcodes.has(s.barcode));
+      
+      if(!confirm(`سيتم تسجيل غياب لعدد (${absentStudents.length}) طلاب في ${period}. هل أنت متأكد؟`)) return;
+
+      const btn = document.getElementById('submitBtn');
+      btn.innerHTML = "جاري الإرسال..."; btn.disabled = true;
+
+      fetch(WEB_APP_URL, {
+        method: 'POST',
+        body: JSON.stringify({ 
+          action: "submitAbsences", 
+          data: { schoolId: schoolId, className: className, period: period, absentStudents: absentStudents } 
+        })
+      })
+      .then(r => r.json()).then(res => {
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> تسجيل الغياب وإرسال للإدارة'; 
+        btn.disabled = false;
+        alert(res.message);
+        
+        if(isScanning) toggleScanner(); 
+        
+      }).catch(err => {
+        alert("حدث خطأ في الاتصال بالخادم.");
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> تسجيل الغياب وإرسال للإدارة'; 
+        btn.disabled = false;
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,190 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>إنشاء حساب مدرسة جديد</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f0f2f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .register-container {
+      background-color: #ffffff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 400px;
+    }
+    .register-container h2 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 20px;
+    }
+    .input-group {
+      margin-bottom: 15px;
+    }
+    .input-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #333;
+      text-align: right;
+    }
+    .input-group input, .input-group select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+    .submit-btn {
+      width: 100%;
+      padding: 12px;
+      background-color: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .submit-btn:hover {
+      background-color: #1557b0;
+    }
+    .submit-btn:disabled {
+      background-color: #9cbbf1;
+      cursor: not-allowed;
+    }
+    #responseMessage {
+      margin-top: 15px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="register-container">
+    <h2>تسجيل مدرسة جديدة</h2>
+    <form id="registrationForm">
+      
+      <div class="input-group">
+        <label for="schoolName">اسم المدرسة:</label>
+        <input type="text" id="schoolName" required>
+      </div>
+      
+      <div class="input-group">
+        <label for="governorate">المحافظة:</label>
+        <input type="text" id="governorate" required>
+      </div>
+      
+      <div class="input-group">
+        <label for="directorate">الإدارة التعليمية:</label>
+        <input type="text" id="directorate" required>
+      </div>
+
+      <div class="input-group">
+        <label for="type">نوع المدرسة:</label>
+        <select id="type" required>
+          <option value="" disabled selected>اختر نوع المدرسة...</option>
+          <option value="حكومي">حكومي</option>
+          <option value="تجريبي">تجريبي</option>
+          <option value="خاص">خاص</option>
+          <option value="لغات">لغات</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label for="stage">المرحلة الدراسية:</label>
+        <select id="stage" required>
+          <option value="" disabled selected>اختر المرحلة...</option>
+          <option value="ابتدائي">ابتدائي</option>
+          <option value="إعدادي">إعدادي</option>
+          <option value="ثانوي">ثانوي</option>
+        </select>
+      </div>
+
+      <hr style="border-top: 1px solid #eee; margin: 20px 0;">
+
+      <div class="input-group">
+        <label for="managerUser">اسم المستخدم (لمدير المدرسة):</label>
+        <input type="text" id="managerUser" required>
+      </div>
+
+      <div class="input-group">
+        <label for="managerPass">كلمة المرور:</label>
+        <input type="password" id="managerPass" required>
+      </div>
+
+      <button type="submit" id="submitBtn" class="submit-btn">إنشاء الحساب الآن</button>
+    </form>
+    
+    <div id="responseMessage"></div>
+  </div>
+
+  <script>
+    // الرابط بتاعك جاهز هنا
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby0Q4NV6I6yXSdsjmbDvjQ6apv-9vTLEM4EolQfl3kXwl2asjutPpjexgjIi61QePly5Q/exec"; 
+
+    document.getElementById('registrationForm').addEventListener('submit', function(e) {
+      e.preventDefault(); 
+      
+      const btn = document.getElementById('submitBtn');
+      const msg = document.getElementById('responseMessage');
+      
+      btn.innerText = "جاري إنشاء قاعدة البيانات...";
+      btn.disabled = true;
+      msg.innerText = "";
+
+      const payload = {
+        action: "registerSchool",
+        data: {
+          schoolName: document.getElementById('schoolName').value,
+          governorate: document.getElementById('governorate').value,
+          directorate: document.getElementById('directorate').value,
+          type: document.getElementById('type').value,
+          stage: document.getElementById('stage').value,
+          managerUser: document.getElementById('managerUser').value,
+          managerPass: document.getElementById('managerPass').value
+        }
+      };
+
+      fetch(WEB_APP_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        redirect: 'follow' 
+      })
+      .then(response => response.json())
+      .then(result => {
+        btn.innerText = "إنشاء الحساب الآن";
+        btn.disabled = false;
+        
+        if(result.status === "success") {
+          msg.style.color = "green";
+          msg.innerHTML = result.message + "<br>كود المدرسة: " + result.schoolId;
+          document.getElementById('registrationForm').reset();
+        } else {
+          msg.style.color = "red";
+          msg.innerText = result.message;
+        }
+      })
+      .catch(error => {
+        btn.innerText = "إنشاء الحساب الآن";
+        btn.disabled = false;
+        msg.style.color = "red";
+        msg.innerText = "حدث خطأ في الاتصال بالخادم، يرجى المحاولة مرة أخرى.";
+      });
+    });
+  </script>
+</body>
+</html>

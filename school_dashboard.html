@@ -1,0 +1,579 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة تحكم المدرسة</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; }
+    .sidebar { width: 250px; background-color: #1e293b; color: white; display: flex; flex-direction: column; box-shadow: -2px 0 5px rgba(0,0,0,0.1); z-index: 10; }
+    .sidebar-header { padding: 20px; text-align: center; background-color: #0f172a; border-bottom: 1px solid #334155; }
+    .sidebar-header i { font-size: 30px; color: #3b82f6; margin-bottom: 10px; }
+    .sidebar-menu { list-style: none; padding: 0; margin: 0; flex-grow: 1; }
+    .sidebar-menu li { border-bottom: 1px solid #334155; }
+    .sidebar-menu a { display: block; padding: 15px 20px; color: #cbd5e1; text-decoration: none; transition: 0.3s; }
+    .sidebar-menu a:hover, .sidebar-menu a.active { background-color: #3b82f6; color: white; }
+    .sidebar-menu i { width: 25px; }
+    .main-content { flex-grow: 1; display: flex; flex-direction: column; background-color: #f8fafc; }
+    .topbar { background-color: white; padding: 15px 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; z-index: 5; }
+    .school-id-badge { background-color: #e0e7ff; color: #4338ca; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 14px; }
+    .logout-btn { background-color: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+    .logout-btn:hover { background-color: #dc2626; }
+    .dashboard-area { padding: 30px; overflow-y: auto; height: 100%; box-sizing: border-box;}
+    .action-btn { background: none; border: none; cursor: pointer; font-size: 14px; margin-left: 5px; color: #6b7280; padding: 2px; }
+    .action-btn:hover { color: #2563eb; }
+    .delete-btn:hover { color: #ef4444; }
+    .view-section { display: none; } 
+    .view-section.active { display: block; }
+    .schedule-input { width: 95%; padding: 8px 5px; text-align: center; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: bold; }
+
+    /* تنسيقات البطاقات الإحصائية */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px; }
+    .stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center; border-bottom: 4px solid #3b82f6; }
+    .stat-card i { font-size: 30px; color: #3b82f6; margin-bottom: 10px; }
+    .stat-card h3 { margin: 0; color: #64748b; font-size: 16px; }
+    .stat-card h2 { margin: 10px 0 0 0; color: #1e293b; font-size: 28px; }
+
+    /* تنسيقات النماذج */
+    .view-section form { gap: 20px !important; }
+    .view-section form div { display: flex; flex-direction: column; }
+    .view-section form label { margin-bottom: 8px; font-weight: bold; color: #1e293b; font-size: 14px; }
+    .view-section form input, .view-section form select { width: 100% !important; padding: 10px !important; border: 1px solid #cbd5e1 !important; border-radius: 6px !important; box-sizing: border-box !important; font-size: 14px !important; background-color: #f8fafc !important; }
+
+    @media print {
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <i class="fa-solid fa-school"></i>
+      <h3>نظام إدارة المدرسة</h3>
+    </div>
+    <ul class="sidebar-menu">
+      <li><a href="#" class="active" onclick="switchView('welcomeView', this); fetchDashboardData();"><i class="fa-solid fa-house"></i> الرئيسية</a></li>
+      <li><a href="#" onclick="switchView('teachersView', this); fetchTeachers();"><i class="fa-solid fa-chalkboard-user"></i> إدارة المعلمين</a></li>
+      <li><a href="#" onclick="switchView('studentsView', this); fetchStudents();"><i class="fa-solid fa-user-graduate"></i> بيانات الطلاب</a></li>
+      <li><a href="#" onclick="switchView('classesView', this); fetchClassesPageData();"><i class="fa-solid fa-users-rectangle"></i> الفصول الدراسية</a></li>
+      <li><a href="#" onclick="switchView('attendanceView', this); setTimeout(() => document.getElementById('attendanceBarcode').focus(), 100); fetchDashboardData();"><i class="fa-solid fa-clipboard-user"></i> سجل الغياب</a></li>
+      <li><a href="#" onclick="switchView('scheduleView', this); prepareScheduleView();"><i class="fa-solid fa-calendar-days"></i> جدول الحصص</a></li>
+      <li><a href="#" onclick="switchView('warningsView', this); fetchWarningStudents();"><i class="fa-solid fa-triangle-exclamation" style="color:#ef4444;"></i> قائمة الخطر</a></li>
+    </ul>
+  </div>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div>
+        <strong>كود المدرسة: </strong>
+        <span id="displaySchoolId" class="school-id-badge">جاري التحميل...</span>
+      </div>
+      <button class="logout-btn" onclick="window.location.href='index.html'">تسجيل خروج <i class="fa-solid fa-right-from-bracket"></i></button>
+    </div>
+
+    <div class="dashboard-area">
+      <div id="moduleContent">
+        
+        <div id="welcomeView" class="view-section active">
+          <div style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 30px;">
+            <h2 style="margin: 0 0 10px 0;">مرحباً بك في لوحة تحكم المدرسة</h2>
+            <p style="margin: 0; opacity: 0.9;">نظام متكامل لإدارة شؤون الطلاب والمعلمين والغياب.</p>
+          </div>
+          
+          <div class="stats-grid">
+            <div class="stat-card" style="border-bottom-color: #3b82f6;">
+              <i class="fa-solid fa-user-graduate" style="color: #3b82f6;"></i>
+              <h3>إجمالي الطلاب</h3>
+              <h2 id="statStudentsCount">...</h2>
+            </div>
+            <div class="stat-card" style="border-bottom-color: #10b981;">
+              <i class="fa-solid fa-chalkboard-user" style="color: #10b981;"></i>
+              <h3>المعلمين</h3>
+              <h2 id="statTeachersCount">...</h2>
+            </div>
+            <div class="stat-card" style="border-bottom-color: #f59e0b;">
+              <i class="fa-solid fa-users-rectangle" style="color: #f59e0b;"></i>
+              <h3>الفصول</h3>
+              <h2 id="statClassesCount">...</h2>
+            </div>
+            <div class="stat-card" style="border-bottom-color: #ef4444;">
+              <i class="fa-solid fa-user-clock" style="color: #ef4444;"></i>
+              <h3>غياب اليوم</h3>
+              <h2 id="statAbsenceCount">...</h2>
+            </div>
+          </div>
+        </div>
+
+        <div id="teachersView" class="view-section">
+          <div style="background: white; padding: 25px; border-radius: 8px;">
+            <h3 style="margin-top:0; border-bottom:2px solid #e2e8f0; padding-bottom:10px;">إضافة معلم</h3>
+            <form id="addTeacherForm" style="display: grid; grid-template-columns: 1fr 1fr;">
+              <div style="grid-column: span 2;"><label>الاسم</label><input type="text" id="teacherName" required></div>
+              <div><label>الكود</label><input type="text" id="teacherCode" required></div>
+              <div><label>المرور</label><input type="text" id="teacherPass" required></div>
+              <div style="grid-column: span 2; display:block;"><button type="submit" style="width:100%; background:#10b981; color:white; padding:12px; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">حفظ</button></div>
+            </form>
+            <div style="margin-top: 40px;">
+              <table style="width: 100%; border-collapse: collapse; text-align: right; margin-top:10px;">
+                <thead>
+                  <tr style="background-color: #f8fafc; border-bottom: 2px solid #cbd5e1;">
+                    <th style="padding:10px;">الكود</th><th style="padding:10px;">الاسم</th><th style="padding:10px;">المرور</th><th style="padding:10px; text-align:center;">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody id="teachersTableBody"></tbody>
+              </table>
+              <div id="loadingTeachers" style="text-align:center; padding:20px; display:none;">تحميل...</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="studentsView" class="view-section">
+          <div style="background: white; padding: 25px; border-radius: 8px;">
+            <h3 style="margin-top:0; border-bottom:2px solid #e2e8f0; padding-bottom:10px;">إضافة طالب</h3>
+            <form id="addStudentForm" style="display: grid; grid-template-columns: 1fr 1fr;">
+              <div><label>الاسم</label><input type="text" id="stuName" required></div>
+              <div><label>الرقم القومي</label><input type="text" id="stuNationalId" maxlength="14" required></div>
+              <div><label>الفصل</label><input type="text" id="stuClass" placeholder="مثال: 1/1" required></div>
+              <div><label>البريد الموحد</label><input type="email" id="stuEmail"></div>
+              <div>
+                <label>الحالة</label>
+                <select id="stuStatus" required>
+                  <option value="مستجد">مستجد</option><option value="باقي للإعادة">باقي للإعادة</option>
+                </select>
+              </div>
+              <div>
+                <label>الديانة</label>
+                <select id="stuReligion" required>
+                  <option value="مسلم">مسلم</option><option value="مسيحي">مسيحي</option>
+                </select>
+              </div>
+              <div style="background-color: #f1f5f9; padding: 15px; border-radius: 6px; grid-column: span 2; display: flex; flex-direction: row; justify-content: space-around;">
+                <div><strong>النوع: </strong><span id="autoGender">---</span></div>
+                <div><strong>الميلاد: </strong><span id="autoDob">---</span></div>
+                <div><strong>المحافظة: </strong><span id="autoGov">---</span></div>
+              </div>
+              <div style="grid-column: span 2; display:block;"><button type="submit" style="width:100%; background:#10b981; color:white; padding:12px; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">حفظ</button></div>
+            </form>
+            <div style="margin-top: 40px;">
+              <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; text-align: right; margin-top:10px; font-size: 12px;">
+                  <thead>
+                    <tr style="background-color: #f8fafc; border-bottom: 2px solid #cbd5e1;">
+                      <th style="padding:10px;">الباركود</th><th style="padding:10px;">الاسم</th><th style="padding:10px;">الفصل</th><th style="padding:10px;">الحالة</th><th style="padding:10px;">الديانة</th><th style="padding:10px;">القومي</th><th style="padding:10px;">البريد</th><th style="padding:10px;">النوع</th><th style="padding:10px;">المحافظة</th><th style="padding:10px;">الميلاد</th><th style="padding:10px;">الغياب</th><th style="padding:10px;">إجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody id="studentsTableBody"></tbody>
+                </table>
+                <div id="loadingStudents" style="text-align:center; padding:20px; display:none;">تحميل...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="classesView" class="view-section">
+          <div style="background: white; padding: 25px; border-radius: 8px;">
+            <h3 style="margin-top:0; border-bottom:2px solid #e2e8f0; padding-bottom:10px;">إنشاء فصل</h3>
+            <form id="addClassForm" style="display: grid; grid-template-columns: 1fr 1fr;">
+              <div><label>اسم الفصل</label><input type="text" id="classNameInput" placeholder="مثال: 1/1" required></div>
+              <div><label>الرائد</label><select id="classTeacherSelect" required><option value="">-- اختر --</option></select></div>
+              <div style="grid-column: span 2; display:block;"><button type="submit" style="width:100%; background:#10b981; color:white; padding:12px; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">إنشاء</button></div>
+            </form>
+            <div style="margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+              <div>
+                <table style="width: 100%; border-collapse: collapse; text-align: right; margin-top:10px; font-size: 13px;">
+                  <thead>
+                    <tr style="background-color: #f8fafc; border-bottom: 2px solid #cbd5e1;">
+                      <th style="padding:10px;">الفصل</th><th style="padding:10px;">الرائد</th><th style="padding:10px; text-align:center;">الطلاب</th>
+                    </tr>
+                  </thead>
+                  <tbody id="classesTableBody"></tbody>
+                </table>
+                <div id="loadingClasses" style="text-align:center; padding:20px; display:none;">تحميل...</div>
+              </div>
+              <div id="classStudentsContainer" style="background-color: #f8fafc; padding: 15px; border-radius: 6px; display:none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                  <h3 style="color:#1d4ed8; margin:0;" id="selectedClassNameHeader">طلاب فصل ---</h3>
+                  <div>
+                    <button onclick="printBulkStudentCards()" style="background:#2563eb; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer; font-weight:bold; margin-left:5px;" title="طباعة 8 كروت في صفحة A4">طباعة هويات الفصل <i class="fa-solid fa-print"></i></button>
+                    <button onclick="printHealthInsurance()" style="background:#10b981; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer; font-weight:bold;">طباعة التأمين الصحي <i class="fa-solid fa-notes-medical"></i></button>
+                  </div>
+                </div>
+                <table style="width: 100%; border-collapse: collapse; text-align: right; font-size: 12px; background: white;">
+                  <thead>
+                    <tr style="background-color: #f1f5f9; border-bottom: 1px solid #cbd5e1;">
+                      <th style="padding:8px; width:40px; text-align:center;"><input type="checkbox" onchange="toggleAllStudents(this)"></th>
+                      <th style="padding:8px;">الباركود</th>
+                      <th style="padding:8px;">الاسم</th>
+                      <th style="padding:8px; text-align:center;">الغياب</th>
+                      <th style="padding:8px; text-align:center;">إجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody id="classStudentsTableBody"></tbody>
+                </table>
+                <div id="loadingClassStudents" style="text-align:center; padding:20px; display:none;">تحميل...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="scheduleView" class="view-section">
+          <div style="background: white; padding: 25px; border-radius: 8px;">
+            <h3 style="margin-top:0; border-bottom:2px solid #e2e8f0; padding-bottom:10px;"><i class="fa-solid fa-calendar-days"></i> جدول الحصص الذكي</h3>
+            <div style="display: flex; gap: 20px; margin-bottom: 20px; align-items: center; background: #f8fafc; padding: 15px; border-radius: 6px;">
+              <div style="width: 250px;">
+                <label style="display:block; margin-bottom:5px; font-weight:bold;">اختر المعلم:</label>
+                <select id="teacherScheduleSelect" onchange="fetchTeacherSchedule()" style="width:100%; padding:10px; border-radius:5px; border:1px solid #cbd5e1;"><option value="">-- اختر المعلم --</option></select>
+              </div>
+              <div style="display:flex; gap:25px; margin-top: 15px;">
+                <label><input type="checkbox" id="toggleSat" onchange="toggleSaturday()"> السبت</label>
+                <label><input type="checkbox" id="togglePeriod8" onchange="togglePeriod8()"> الحصة 8</label>
+              </div>
+              <div style="margin-right: auto; margin-top: 15px;">
+                <button id="saveScheduleBtn" onclick="saveClassSchedule()" style="background:#10b981; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; display:none; font-weight:bold;">حفظ الجدول</button>
+                <span id="loadingSchedule" style="display:none; color:#2563eb;">جاري التحميل...</span>
+              </div>
+            </div>
+            <div id="scheduleTableContainer" style="display:none; overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse; text-align: center; border: 1px solid #cbd5e1;" id="scheduleTable">
+                <thead><tr style="background-color: #1e293b; color: white;"><th style="padding:12px;">اليوم</th><th>ح1</th><th>ح2</th><th>ح3</th><th>ح4</th><th>ح5</th><th>ح6</th><th>ح7</th><th class="p8-col" style="display:none; background-color: #3b82f6;">ح8</th></tr></thead>
+                <tbody id="scheduleTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="attendanceView" class="view-section">
+          <div style="background: white; padding: 30px; border-radius: 8px; text-align: center;">
+            <h3 style="margin-top:0; border-bottom:2px solid #e2e8f0; padding-bottom:15px; font-size: 22px;">سجل الغياب اليومي</h3>
+            
+            <div style="max-width: 500px; margin: 20px auto;">
+              <label style="display:block; margin-bottom:10px; font-weight:bold; font-size: 16px;">قم بمسح باركود الطالب للتسجيل</label>
+              <input type="text" id="attendanceBarcode" placeholder="STU-..." style="width:100%; padding:15px; font-size: 20px; text-align: center; border:2px solid #3b82f6; border-radius:8px; outline: none;" onkeypress="handleBarcodeScan(event)">
+              <button onclick="checkStudentBarcode()" style="margin-top: 15px; width:100%; background:#1e293b; color:white; padding:12px; border:none; border-radius:5px; font-weight:bold; cursor:pointer; font-size:16px;">تحقق</button>
+            </div>
+            
+            <div id="attendanceStudentCard" style="display: none; margin-top: 30px; background: #f8fafc; padding: 25px; border-radius: 8px; border: 1px solid #cbd5e1; max-width: 500px; margin-left: auto; margin-right: auto; text-align: right;">
+              <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                <i class="fa-solid fa-user-graduate" style="font-size: 40px; color: #3b82f6; margin-left: 15px;"></i>
+                <div>
+                  <h4 style="margin:0; font-size: 20px;" id="attStudentName">الاسم</h4>
+                  <span style="background:#e0e7ff; color:#4338ca; padding:2px 8px; border-radius:12px; font-size:12px; font-weight:bold;" id="attStudentBarcodeBadge">STU-...</span>
+                </div>
+              </div>
+              <p style="margin:8px 0; font-size:16px;"><strong>الفصل:</strong> <span id="attStudentClass" style="font-weight:bold;">---</span></p>
+              <p style="margin:8px 0; font-size:16px;"><strong>الغياب الحالي:</strong> <span id="attStudentWarnings" style="color:#ef4444; font-weight:bold; font-size:18px;">0</span> أيام</p>
+              <button onclick="recordAbsence()" style="margin-top: 25px; width:100%; background:#ef4444; color:white; padding:15px; border:none; border-radius:5px; font-weight:bold; cursor:pointer; font-size:18px;">تأكيد الغياب اليوم (+1)</button>
+            </div>
+            
+            <div id="todayAbsenceList" style="margin-top: 40px; display: none; text-align: right;">
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
+                <h4 style="color: #1e293b; margin: 0;"><i class="fa-solid fa-list-check"></i> قائمة الطلاب الغائبين:</h4>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <label style="font-weight: bold; color: #334155; font-size: 14px;">اختر التاريخ:</label>
+                  <input type="date" id="absentDateInput" onchange="fetchDashboardData()" style="padding: 8px; border: 1px solid #cbd5e1; border-radius: 5px; font-family: inherit; font-size: 14px; background: #fff;">
+                </div>
+              </div>
+              <table style="width: 100%; border-collapse: collapse; font-size: 14px; background: white; border: 1px solid #cbd5e1;">
+                <thead>
+                  <tr style="background-color: #fef2f2; border-bottom: 1px solid #cbd5e1; color: #991b1b;">
+                    <th style="padding:10px;">الباركود</th><th style="padding:10px;">اسم الطالب</th><th style="padding:10px;">الفصل</th><th style="padding:10px; text-align:center;">وقت التسجيل</th>
+                  </tr>
+                </thead>
+                <tbody id="todayAbsenceTableBody"></tbody>
+              </table>
+              <div id="loadingAttendance" style="text-align:center; padding:20px; display:none; color: #3b82f6;">جاري سحب البيانات من السيرفر...</div>
+            </div>
+
+          </div>
+        </div>
+
+        <div id="warningsView" class="view-section">
+          <div style="background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <h3 style="margin-top:0; color:#1e293b; border-bottom:2px solid #e2e8f0; padding-bottom:10px;">قائمة الخطر وإصدار الإنذارات</h3>
+            <div style="display: flex; gap: 15px; align-items: flex-end; margin-bottom: 20px; background: #f8fafc; padding: 15px; border-radius: 5px; border: 1px solid #cbd5e1;">
+              <div style="flex-grow: 1;">
+                <label style="display:block; margin-bottom:5px; font-weight:bold; color: #334155;">الحد الأدنى لأيام الغياب لظهور الطالب في القائمة:</label>
+                <input type="number" id="warningLimitInput" value="5" min="1" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:5px; box-sizing: border-box; font-size:16px; text-align:center;">
+              </div>
+              <div>
+                <button onclick="fetchWarningStudents()" style="background:#ef4444; color:white; padding:12px 25px; border:none; border-radius:5px; font-weight:bold; cursor:pointer; font-size:16px;">بحث واستخراج <i class="fa-solid fa-filter"></i></button>
+              </div>
+            </div>
+            <div style="overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse; text-align: right; margin-top:10px; font-size: 13px;">
+                <thead>
+                  <tr style="background-color: #fef2f2; border-bottom: 2px solid #fca5a5; color: #991b1b;">
+                    <th style="padding:10px;">الباركود</th><th style="padding:10px;">اسم الطالب</th><th style="padding:10px;">الفصل</th><th style="padding:10px; text-align:center;">عدد أيام الغياب</th><th style="padding:10px; text-align:center;">الإنذار</th>
+                  </tr>
+                </thead>
+                <tbody id="warningsTableBody"></tbody>
+              </table>
+              <div id="loadingWarnings" style="text-align:center; padding:20px; color:#64748b; display:none;">جاري البحث في السجلات...</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div id="warningModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1000; justify-content:center; align-items:center;">
+    <div id="printWarningArea" style="background:white; padding:35px; border-radius:5px; width:700px; max-width:95%;">
+       <div class="print-title" style="text-align:center; font-weight:bold; font-size: 18px; margin-bottom: 15px;">بسم الله الرحمن الرحيم</div>
+       <div class="print-header" style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 15px;">
+           <div>محافظة : <span id="modalSchoolGov">...</span><br>إدارة : <span id="modalSchoolIdara">...</span><br>مدرسة : <span id="modalSchoolName">...</span></div>
+       </div>
+       <div class="print-warning-num" style="text-align:center; text-decoration:underline; font-size: 20px; font-weight: bold; margin-bottom: 20px;">إنذار رقم ( <span id="modalWarningLevel"></span> )</div>
+       <div class="print-body" style="font-size: 16px; line-height: 1.8;">
+          السيد ولي أمر الطالب : <strong id="modalStuName" style="text-decoration:underline;">...</strong>
+          &nbsp;&nbsp;&nbsp; بالصف : <strong id="modalStuGrade" style="text-decoration:underline;">...</strong>
+          &nbsp;&nbsp;&nbsp; فصل : <strong id="modalStuClass" style="text-decoration:underline;">...</strong>
+          <div style="margin: 15px 0; font-weight: bold;">بعد التحية ،،</div>
+          الطالب الموضح اسمه بعالية قد تغيب عن المدرسة أيام : <strong id="modalStuAbsence" style="color:red; text-decoration:underline;">...</strong> يوم.
+          <br>وإذا لم يحضر للمدرسة يحرر لكم محضر مخالفة بمبلغ عشرة جنيهات ويتكرر المحضر عند غيابه.
+          <div style="text-align: center; font-weight: bold; margin-top: 15px;">مع قبول وافر التحية</div>
+       </div>
+       <div style="margin-top: 20px; font-weight: bold;">تحريراً في : <span id="modalCurrentDate"></span></div>
+       <div class="print-signatures" style="display: flex; justify-content: space-around; margin-top:20px; text-align:center; font-weight: bold;">
+          <div>المعاون<br><br>...................</div><div>ناظر المدرسة<br><br><span id="modalPrincipalName">...................</span></div>
+       </div>
+       <div style="margin-top:30px; border-top: 1px dashed #ccc; padding-top: 15px; display:flex; gap:10px; justify-content:center;" class="no-print">
+         <button onclick="window.print()" style="background:#3b82f6; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-weight:bold; font-size: 15px;">طباعة الإنذار <i class="fa-solid fa-print"></i></button>
+         <button id="sendWarningBtn" onclick="sendWarningViaBot()" style="background:#10b981; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-weight:bold; font-size: 15px;">إرسال للولي <i class="fa-brands fa-telegram"></i></button>
+         <button onclick="closeWarningModal()" style="background:#64748b; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-weight:bold; font-size: 15px;">إغلاق</button>
+       </div>
+    </div>
+  </div>
+
+  <script>
+    // ========= ضع رابط السيرفر الجديد هنا (مهم جداً جداً بعد تحديث Code.gs) =========
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby0Q4NV6I6yXSdsjmbDvjQ6apv-9vTLEM4EolQfl3kXwl2asjutPpjexgjIi61QePly5Q/exec"; 
+
+    let globalSchoolInfo = { name: "---", gov: "---", idara: "---", manager: "---" };
+    let excusedStudents = new Set();
+    window.currentClassStudents = []; 
+    window.currentClassName = "";
+
+    document.addEventListener("DOMContentLoaded", function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const schoolId = urlParams.get('id'); 
+      if (schoolId) { 
+        document.getElementById('displaySchoolId').innerText = schoolId; 
+        
+        // تعيين تاريخ اليوم كافتراضي لخانة البحث
+        const today = new Date();
+        const offset = today.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(today - offset)).toISOString().split('T')[0];
+        document.getElementById('absentDateInput').value = localISOTime;
+
+        fetchSchoolBasicInfo();
+        fetchDashboardData(); 
+      } else { 
+        window.location.href = "login.html"; 
+      }
+    });
+
+    function switchView(viewId, navElement) {
+      document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+      document.getElementById(viewId).classList.add('active');
+      document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
+      navElement.classList.add('active');
+    }
+
+    function fetchSchoolBasicInfo() {
+      fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getSchoolInfo", data: { schoolId: document.getElementById('displaySchoolId').innerText } }), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow' })
+      .then(r => r.json()).then(res => { if(res.status === "success") { globalSchoolInfo = res.info; } });
+    }
+
+    // ==========================================
+    //  دالة موحدة لجلب إحصائيات الكروت وسجل الغياب معاً
+    // ==========================================
+    function fetchDashboardData() {
+      const schoolId = document.getElementById('displaySchoolId').innerText;
+      const targetDate = document.getElementById('absentDateInput').value; // التاريخ المختار
+      
+      const tbody = document.getElementById('todayAbsenceTableBody');
+      const loadingAtt = document.getElementById('loadingAttendance');
+      document.getElementById('todayAbsenceList').style.display = 'block';
+      
+      document.getElementById('statStudentsCount').innerText = "...";
+      document.getElementById('statTeachersCount').innerText = "...";
+      document.getElementById('statClassesCount').innerText = "...";
+      document.getElementById('statAbsenceCount').innerText = "...";
+      
+      tbody.innerHTML = "";
+      loadingAtt.style.display = "block";
+      
+      fetch(WEB_APP_URL, { 
+        method: 'POST', 
+        body: JSON.stringify({ action: "getDashboardData", data: { schoolId: schoolId, date: targetDate } }), 
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+      })
+      .then(r => r.json()).then(res => {
+        loadingAtt.style.display = "none";
+        if(res.status === "success") {
+          // تحديث الكروت
+          document.getElementById('statStudentsCount').innerText = res.stats.students || "0";
+          document.getElementById('statTeachersCount').innerText = res.stats.teachers || "0";
+          document.getElementById('statClassesCount').innerText = res.stats.classes || "0";
+          document.getElementById('statAbsenceCount').innerText = res.stats.todayAbsence || "0";
+          
+          // تحديث جدول الغياب
+          if(res.absences.length === 0) {
+            tbody.innerHTML = `<tr><td colspan='4' style='text-align:center; color:#10b981; font-weight:bold; padding:15px;'>لم يتم رصد أي غياب ليوم (${targetDate}).</td></tr>`;
+          } else {
+            res.absences.forEach(att => {
+              tbody.innerHTML += `<tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding:10px; font-weight:bold;">${att.barcode}</td><td style="padding:10px; font-weight:bold; color:#1e293b;">${att.name}</td><td style="padding:10px;">${att.className}</td><td style="padding:10px; color:#ef4444;" dir="ltr">${att.time}</td></tr>`;
+            });
+          }
+        } else {
+          tbody.innerHTML = `<tr><td colspan='4' style='text-align:center; color:red;'>${res.message}</td></tr>`;
+        }
+      }).catch(() => {
+        loadingAtt.style.display = "none";
+        tbody.innerHTML = "<tr><td colspan='4' style='text-align:center; color:red;'>فشل تحميل السجل. تأكد من السيرفر.</td></tr>"; 
+      });
+    }
+
+    // ==========================================
+    //           دوال التأمين الصحي الذكي
+    // ==========================================
+    function toggleAllStudents(source) {
+      const checkboxes = document.querySelectorAll('.student-cb'); checkboxes.forEach(cb => cb.checked = source.checked);
+    }
+
+    function printHealthInsurance() {
+      const checkboxes = document.querySelectorAll('.student-cb:checked');
+      if (checkboxes.length === 0) { alert("يرجى تحديد طالب واحد على الأقل لطباعة نموذج التأمين الصحي."); return; }
+      
+      let formsHtml = '';
+      const gov = globalSchoolInfo.gov || '........'; const idara = globalSchoolInfo.idara || '........'; const school = globalSchoolInfo.name || '........';
+
+      checkboxes.forEach((cb, index) => {
+        const studentName = cb.getAttribute('data-name'); const barcode = cb.getAttribute('data-barcode');
+        excusedStudents.add(barcode); // حماية من الغياب
+
+        formsHtml += `
+          <div style="font-family: Arial; padding: 30px; border: 2px solid #000; border-radius: 8px; max-width: 750px; margin: 20px auto; box-sizing: border-box; ${index < checkboxes.length - 1 ? 'page-break-after: always;' : ''}">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+              <div style="border: 2px solid #000; width: 100px; height: 130px; text-align: center; padding-top: 10px; font-weight: bold; font-size: 16px;">نموذج رقم ١</div>
+              <div style="text-align: center; flex-grow: 1;"><h2 style="margin: 0 0 5px 0; font-size: 24px;">الهيئة العامة للتأمين الصحي</h2><h3 style="margin: 0 0 5px 0; font-size: 18px;">فرع ${gov} وجنوب الوجه القبلي</h3><h2 style="margin: 15px 0; font-size: 22px; text-decoration: underline; font-weight: bold;">نظام العلاج التأميني للطلبة</h2></div>
+            </div>
+            <div style="text-align: right; font-size: 19px; line-height: 2.3;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 10px;"><span><strong>تحريراً في:</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; / &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; / &nbsp;&nbsp;&nbsp;&nbsp;2026م</span></div>
+              <p style="margin: 5px 0;"><strong>إدارة :</strong> ${idara} التعليمية</p><p style="margin: 5px 0;"><strong>مدرسة :</strong> ${school}</p>
+              <div style="text-align: center; margin: 20px 0;"><h3 style="display: inline-block; margin: 0;">إخطار عرض على <span style="display: inline-block; width: 140px; border-bottom: 2px solid #000; margin: 0 10px;"></span> ممارس / أخصائي</h3></div>
+              <p style="margin: 5px 0;"><strong>اسم الطالـــــب :</strong> <span style="font-weight: bold; font-size: 22px; text-decoration: underline;">${studentName}</span></p>
+              <p style="margin: 5px 0;"><strong>رقم بطاقة التأمين الصحي :</strong> ...........................................................................</p>
+              <p style="margin: 5px 0;"><strong>العنــــــــــــــــــــــــــــوان :</strong> ...........................................................................</p>
+              <p style="margin: 5px 0;"><strong>السيد الدكتــــــــــــــــور :</strong> ...........................................................................</p>
+              <div style="text-align: center; margin: 25px 0;"><h3 style="margin: 0;">بعد التحية ،،،</h3></div>
+              <p style="text-align: justify; text-indent: 30px; font-size: 20px;">نرجو من سيادتكم توقيع الكشف الطبي على الطالب المذكور أعلاه والمنتفع بنظام العلاج التأميني في الدولة وتقرير العلاج اللازم له.</p>
+              <p style="text-align: center; font-weight: bold; margin-top: 25px;">وتفضلوا بقبول فائق الاحترام ،،،</p>
+            </div>
+            <div style="display: flex; justify-content: space-around; margin-top: 50px; text-align: center; font-weight: bold; font-size: 18px;">
+              <div>الزائرة الصحية<br><br>...................</div><div>ناظر المدرسة<br><br>...................</div><div>مدير المدرسة<br><br>...................</div>
+            </div>
+          </div>`;
+      });
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(`<html dir="rtl"><head><title>طباعة التأمين الصحي</title></head><body>${formsHtml}<script>setTimeout(()=>{window.print();window.close();},800);<\/script></body></html>`);
+      alert("تمت الطباعة وتسجيل عذر طبي للطلاب المحددين (لن يتم تسجيلهم غياب اليوم).");
+    }
+
+    // ==========================================
+    //       دوال طباعة هويات الفصل (مجمعة 8 في A4)
+    // ==========================================
+    function printBulkStudentCards() {
+      if(!window.currentClassStudents || window.currentClassStudents.length === 0) { alert("لا يوجد طلاب في هذا الفصل للطباعة!"); return; }
+      let html = '<html dir="rtl"><head><title>طباعة هويات الفصل</title><style>body { font-family: Tahoma, sans-serif; margin: 0; padding: 0; background: #fff; } @page { size: A4; margin: 10mm; } .page { display: flex; flex-wrap: wrap; justify-content: space-between; align-content: flex-start; width: 100%; height: 277mm; page-break-after: always; } .card { width: 48%; height: 64mm; margin-bottom: 5mm; border: 2px solid #1d4ed8; border-radius: 12px; padding: 10px; box-sizing: border-box; text-align: center; display:flex; flex-direction:column; justify-content:center; align-items:center; } .card h2 { margin: 0 0 5px 0; font-size: 18px; color: #1e293b; border-bottom: 2px solid #1d4ed8; padding-bottom: 4px; width: 80%; } .card p { margin: 3px 0; font-size: 15px; font-weight: bold; } .card img { width: 100px; height: 100px; margin: 5px 0; }</style></head><body>';
+      let pageCount = Math.ceil(window.currentClassStudents.length / 8);
+      for(let p = 0; p < pageCount; p++) {
+          html += '<div class="page">';
+          for(let i = p * 8; i < (p + 1) * 8 && i < window.currentClassStudents.length; i++) {
+              let stu = window.currentClassStudents[i];
+              html += `<div class="card"><h2>بطاقة هوية طالب</h2><p>الاسم: ${stu.name}</p><p>الفصل: ${window.currentClassName}</p><img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${stu.barcode}" alt="QR Code"><p style="letter-spacing: 1px;">${stu.barcode}</p></div>`;
+          }
+          html += '</div>';
+      }
+      html += '<script>setTimeout(() => { window.print(); window.close(); }, 2000);<\/script></body></html>';
+      let printWindow = window.open('', '_blank');
+      printWindow.document.write(html);
+    }
+
+    function printStudentCard(barcode, name, className) {
+      const printWindow = window.open('', '_blank', 'width=450,height=400');
+      printWindow.document.write(`<html dir="rtl"><head><title>كارنيه الطالب</title></head><body style="font-family: 'Segoe UI', Tahoma, sans-serif; text-align: center; padding: 10px; background: #fff;"><div style="border: 3px double #000; border-radius: 12px; padding: 20px; width: 300px; margin: auto; box-shadow: 0 2px 5px rgba(0,0,0,0.1);"><h2 style="margin: 0 0 15px 0; color: #1d4ed8; font-size: 22px; border-bottom: 2px solid #1d4ed8; padding-bottom: 5px;">بطاقة هوية طالب</h2><div style="font-size: 18px; margin-bottom: 8px; text-align: right;"><strong>الاسم:</strong> ${name}</div><div style="font-size: 18px; margin-bottom: 8px; text-align: right;"><strong>الفصل:</strong> ${className}</div><img src="https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${barcode}" alt="QR Code" style="width: 130px; height: 130px; margin: 10px auto; display: block;"><p style="margin: 5px 0 0 0; font-size: 14px; letter-spacing: 2px; font-weight: bold;">${barcode}</p></div><script>setTimeout(() => { window.print(); window.close(); }, 1500);<\/script></body></html>`);
+    }
+
+    // ==========================================
+    //           دوال سجل الغياب (وتسجيل الغياب)
+    // ==========================================
+    function handleBarcodeScan(e) { if (e.key === 'Enter') { e.preventDefault(); checkStudentBarcode(); } }
+    
+    function checkStudentBarcode() { 
+      const barcode = document.getElementById('attendanceBarcode').value.trim(); 
+      if(!barcode) return; 
+
+      if (excusedStudents.has(barcode)) {
+        alert("يُرجى الانتباه: الطالب لديه (إذن تأمين صحي) اليوم، ولا يمكن تسجيله غياب!");
+        document.getElementById('attendanceBarcode').value = ''; return;
+      }
+
+      const schoolId = document.getElementById('displaySchoolId').innerText; 
+      document.getElementById('attendanceStudentCard').style.display = 'none'; 
+      
+      fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({action: "checkStudentBarcode", data: {schoolId: schoolId, barcode: barcode}}), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow' }).then(r => r.json()).then(res => { 
+        if(res.status === "success") { 
+          document.getElementById('attStudentName').innerText = res.student.name; 
+          document.getElementById('attStudentBarcodeBadge').innerText = res.student.barcode; 
+          document.getElementById('attStudentClass').innerText = res.student.className; 
+          document.getElementById('attStudentWarnings').innerText = res.student.warnings; 
+          document.getElementById('attendanceStudentCard').style.display = 'block'; 
+        } else { 
+          alert(res.message); document.getElementById('attendanceBarcode').value = ''; document.getElementById('attendanceBarcode').focus(); 
+        } 
+      }); 
+    }
+    
+    function recordAbsence() { 
+      const barcode = document.getElementById('attStudentBarcodeBadge').innerText; 
+      const name = document.getElementById('attStudentName').innerText; 
+      const className = document.getElementById('attStudentClass').innerText; 
+      const schoolId = document.getElementById('displaySchoolId').innerText; 
+      
+      if (excusedStudents.has(barcode)) { alert("خطأ: الطالب لديه إذن عذر طبي مسبق اليوم."); return; }
+      document.getElementById('attendanceStudentCard').style.display = 'none'; 
+      
+      fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({action: "recordAttendance", data: {schoolId: schoolId, barcode: barcode, name: name, className: className}}), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow' }).then(r => r.json()).then(res => { 
+        alert(res.message); 
+        document.getElementById('attendanceBarcode').value = ''; 
+        document.getElementById('attendanceBarcode').focus(); 
+        fetchDashboardData(); // تحديث الجدول والكروت
+      }); 
+    }
+
+    function sendFetchRequest(payload, loadingElementId, onSuccess = null, onError = null) {
+      if(loadingElementId) document.getElementById(loadingElementId).style.display = "block";
+      fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow' }).then(r => r.json()).then(res => { if(loadingElementId) document.getElementById(loadingElementId).style.display = "none"; if(res.status === "error" || res.message) alert(res.message); if(onSuccess && res.status !== "error") onSuccess(); }).catch(e => { if(loadingElementId) document.getElementById(loadingElementId).style.display = "none"; alert("حدث خطأ في الاتصال بالخادم!"); if(onError) onError(); });
+    }
+
+    // ==========================================
+    //           بقية الدوال الأساسية للسيستم
+    // ==========================================
+    function fetchClassesPageData() { fetchTeachersForDropdown(); fetchClasses(); }
+    function fetchTeachersForDropdown() { const select = document.getElementById('classTeacherSelect'); select.innerHTML = '<option value="">-- اختر --</option>'; fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getTeachers", data: { schoolId: document.getElementById('displaySchoolId').innerText } }), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow' }).then(r => r.json()).then(res => { if(res.status === "success") { res.data.forEach(t => { const opt = document.createElement('option'); opt.value = t.code; opt.innerText = t.name; select.appendChild(opt); }); } }); }
+    function fetchClasses() { const tbody = document.getElementById('classesTableBody'); const loading = document.getElementById('loadingClasses'); tbody.innerHTML = ""; loading.style.display = "block"; fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getClasses", data: { schoolId: document.getElementById('displaySchoolId').innerText } }), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow' }).then(r => r.json()).then(res => { loading.style.display = "none"; if(res.status === "success") { if(res.data.length === 0) { tbody.innerHTML = "<tr><td colspan='3' style='text-align:center;'>لا يوجد.</td></tr>"; return; } res.data.forEach(cls => { const tr = document.createElement('tr'); tr.style.borderBottom = "1px solid #e2e8f0"; tr.innerHTML = `<td style="padding:10px; font-weight:bold;">فصل ${cls.className}</td><td style="padding:10px;">${cls.teacherName}</td><td style="padding:10px; text-align:center;"><button style="background:#2563eb; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;" onclick="viewClassStudents('${cls.className}')">عرض الطلاب</button></td>`; tbody.appendChild(tr); }); } }); }
+    document.getElementById('addClassForm').addEventListener('submit', function(e) { e.preventDefault(); const submitBtn = this.querySelector('button[type="submit"]'); const select = document.getElementById('classTeacherSelect'); submitBtn.innerText = "جاري..."; submitBtn.disabled = true; sendFetchRequest({ action: "addClass", data: { schoolId: document.getElementById('displaySchoolId').innerText, className: document.getElementById('classNameInput').value, teacherCode: select.value, teacherName: select.options[select.selectedIndex].text } }, 'loadingClasses', () => { submitBtn.innerText = "إنشاء"; submitBtn.disabled = false; document.getElementById('addClassForm').reset(); fetchClasses(); }, () => { submitBtn.innerText = "إنشاء"; submitBtn.disabled = false; }); });
+    function viewClassStudents(className) { document.getElementById('classStudentsContainer').style.display = "block"; document.getElementById('selectedClassNameHeader').innerText = "طلاب فصل " + className; const tbody = document.getElementById('classStudentsTableBody'); const loading = document.getElementById('loadingClassStudents'); tbody.innerHTML = ""; loading.style.display = "block"; fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getClassStudents", data: { schoolId: document.getElementById('displaySchoolId').innerText, className: className } }), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow' }).then(r => r.json()).then(res => { loading.style.display = "none"; if(res.status === "success") { window.currentClassStudents = res.data; window.currentClassName = className; if(res.data.length === 0) { tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>لا يوجد طلاب مقيدين في هذا الفصل.</td></tr>"; return; } res.data.forEach(stu => { const tr = document.createElement('tr'); tr.style.borderBottom = "1px solid #f1f5f9"; tr.innerHTML = `<td style="padding:8px; text-align:center;"><input type="checkbox" class="student-cb" data-barcode="${stu.barcode}" data-name="${stu.name}"></td><td style="padding:8px;">${stu.barcode}</td><td style="padding:8px; font-weight:bold; color:#1e293b;">${stu.name}</td><td style="padding:8px; text-align:center; color:#ef4444; font-weight:bold;">${stu.warnings}</td><td style="padding:8px; text-align:center;"><button onclick="printStudentCard('${stu.barcode}', '${stu.name}', '${className}')" style="background:#8b5cf6; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;" title="طباعة الكارنيه"><i class="fa-solid fa-qrcode"></i></button></td>`; tbody.appendChild(tr); }); } }); }
+    function fetchTeachers() { const tbody = document.getElementById('teachersTableBody'); const loading = document.getElementById('loadingTeachers'); tbody.innerHTML = ""; loading.style.display = "block"; fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getTeachers", data: { schoolId: document.getElementById('displaySchoolId').innerText } }), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow' }).then(r => r.json()).then(res => { loading.style.display = "none"; if(res.status === "success") { if(res.data.length === 0) { tbody.innerHTML = "<tr><td colspan='4' style='text-align:center;'>لا يوجد.</td></tr>"; return; } res.data.forEach(t => { const tr = document.createElement('tr'); tr.style.borderBottom = "1px solid #e2e8f0"; tr.innerHTML = `<td style="padding:10px; font-weight:bold; color:#1d4ed8;">${t.code}</td><td style="padding:10px; font-weight:bold;">${t.name}</td><td style="padding:10px;">${t.password}</td><td style="padding:10px; text-align:center;"><button class="action-btn" onclick="editTeacher('${t.code}', '${t.name}', '${t.password}')"><i class="fa-solid fa-pen"></i></button><button class="action-btn delete-btn" onclick="deleteTeacher('${t.code}', '${t.name}')"><i class="fa-solid fa-trash"></i></button></td>`; tbody.appendChild(tr); }); } }); }
+    document.getElementById('addTeacherForm').addEventListener('submit', function(e) { e.preventDefault(); const submitBtn = this.querySelector('button[type="submit"]'); submitBtn.innerText = "جاري الحفظ..."; submitBtn.disabled = true; sendFetchRequest({ action: "addTeacher", data: { schoolId: document.getElementById('displaySchoolId').innerText, teacherName: document.getElementById('teacherName').value, teacherCode: document.getElementById('teacherCode').value, teacherPass: document.getElementById('teacherPass').value } }, 'loadingTeachers', () => { submitBtn.innerText = "حفظ"; submitBtn.disabled = false; document.getElementById('addTeacherForm').reset(); fetchTeachers(); }, () => { submitBtn.innerText = "حفظ"; submitBtn.disabled = false; }); });
+    function deleteTeacher(code, name) { if(confirm(`حذف المعلم (${name})؟`)) { sendFetchRequest({ action: "deleteTeacher", data: { schoolId: document.getElementById('displaySchoolId').innerText, teacherCode: code } }, 'loadingTeachers', fetchTeachers); } }
+    function editTeacher(code, name, pass) { let newName = prompt("تعديل اسم المعلم:", name); if (!newName) return; let newPass = prompt("تعديل كلمة المرور:", pass); if (!newPass) return; sendFetchRequest({ action: "updateTeacher", data: { schoolId: document.getElementById('displaySchoolId').innerText, teacherCode: code, teacherName: newName, teacherPass: newPass } }, 'loadingTeachers', fetchTeachers); }
+    function fetchStudents() { const tbody = document.getElementById('studentsTableBody'); const loading = document.getElementById('loadingStudents'); tbody.innerHTML = ""; loading.style.display = "block"; fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getStudents", data: { schoolId: document.getElementById('displaySchoolId').innerText } }), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow' }).then(r => r.json()).then(res => { loading.style.display = "none"; if(res.status === "success") { if(res.data.length === 0) { tbody.innerHTML = "<tr><td colspan='12' style='text-align:center;'>لا يوجد طلاب.</td></tr>"; return; } res.data.forEach(s => { const tr = document.createElement('tr'); tr.style.borderBottom = "1px solid #e2e8f0"; tr.innerHTML = `<td style="padding:10px;">${s.barcode}</td><td style="padding:10px; font-weight:bold;">${s.name}</td><td style="padding:10px;">${s.className}</td><td style="padding:10px;">${s.status}</td><td style="padding:10px;">${s.religion}</td><td style="padding:10px;">${s.nationalId}</td><td style="padding:10px; color:#2563eb;">${s.unifiedEmail || '---'}</td><td style="padding:10px;">${s.gender}</td><td style="padding:10px;">${s.gov}</td><td style="padding:10px;" dir="ltr">${s.dob}</td><td style="padding:10px; color:#ef4444; font-weight:bold; text-align:center;">${s.warnings}</td><td style="padding:10px; text-align:center;"><button class="action-btn" onclick="editStudent('${s.barcode}', '${s.name}', '${s.className}', '${s.status}', '${s.religion}', '${s.unifiedEmail}')"><i class="fa-solid fa-pen"></i></button><button class="action-btn delete-btn" onclick="deleteStudent('${s.barcode}', '${s.name}')"><i class="fa-solid fa-trash"></i></button></td>`; tbody.appendChild(tr); }); } }); }
+    const govCodes = { '01': 'القاهرة', '02': 'الإسكندرية', '03': 'بورسعيد', '04': 'السويس', '11': 'دمياط', '12': 'الدقهلية', '13': 'الشرقية', '14': 'القليوبية', '15': 'كفر الشيخ', '16': 'الغربية', '17': 'المنوفية', '18': 'البحيرة', '19': 'الإسماعيلية', '21': 'الجيزة', '22': 'بني سويف', '23': 'الفيوم', '24': 'المنيا', '25': 'أسيوط', '26': 'سوهاج', '27': 'قنا', '28': 'أسوان', '29': 'الأقصر', '31': 'البحر الأحمر', '32': 'الوادي الجديد', '33': 'مطروح', '34': 'شمال سيناء', '35': 'جنوب سيناء', '88': 'خارج الجمهورية' }; document.getElementById('stuNationalId').addEventListener('input', function() { let nid = this.value; if (nid.length === 14) { document.getElementById('autoGender').innerText = (parseInt(nid.charAt(12)) % 2 === 0) ? 'أنثى' : 'ذكر'; document.getElementById('autoGov').innerText = govCodes[nid.substring(7, 9)] || 'غير معروف'; document.getElementById('autoDob').innerText = `${nid.charAt(0) === '2' ? '19' : '20'}${nid.substring(1, 3)}/${nid.substring(3, 5)}/${nid.substring(5, 7)}`; } else { document.getElementById('autoGender').innerText = '---'; document.getElementById('autoDob').innerText = '---'; document.getElementById('autoGov').innerText = '---'; } }); document.getElementById('addStudentForm').addEventListener('submit', function(e) { e.preventDefault(); const submitBtn = this.querySelector('button[type="submit"]'); submitBtn.innerText = "جاري الحفظ..."; submitBtn.disabled = true; sendFetchRequest({ action: "addStudent", data: { schoolId: document.getElementById('displaySchoolId').innerText, name: document.getElementById('stuName').value, nationalId: document.getElementById('stuNationalId').value, class: document.getElementById('stuClass').value, unifiedEmail: document.getElementById('stuEmail').value, status: document.getElementById('stuStatus').value, religion: document.getElementById('stuReligion').value, gender: document.getElementById('autoGender').innerText, gov: document.getElementById('autoGov').innerText, dob: document.getElementById('autoDob').innerText } }, 'loadingStudents', () => { submitBtn.innerText = "حفظ"; submitBtn.disabled = false; document.getElementById('addStudentForm').reset(); document.getElementById('autoGender').innerText = '---'; document.getElementById('autoDob').innerText = '---'; document.getElementById('autoGov').innerText = '---'; fetchStudents(); }, () => { submitBtn.innerText = "حفظ"; submitBtn.disabled = false; }); }); function deleteStudent(barcode, name) { if(confirm(`حذف الطالب (${name})؟`)) { sendFetchRequest({ action: "deleteStudent", data: { schoolId: document.getElementById('displaySchoolId').innerText, barcode: barcode } }, 'loadingStudents', fetchStudents); } } function editStudent(barcode, name, className, status, religion, email) { let newName = prompt("تعديل اسم الطالب:", name); if (!newName) return; let newClass = prompt("تعديل الفصل:", className); if (!newClass) return; let newEmail = prompt("تعديل البريد:", email === '---' ? '' : email); if (newEmail === null) return; let newStatus = prompt("تعديل الحالة:", status); if (!newStatus) return; let newReligion = prompt("تعديل الديانة:", religion); if (!newReligion) return; sendFetchRequest({ action: "updateStudent", data: { schoolId: document.getElementById('displaySchoolId').innerText, barcode: barcode, name: newName, class: newClass, unifiedEmail: newEmail, status: newStatus, religion: newReligion } }, 'loadingStudents', fetchStudents); } function fetchWarningStudents() { const schoolId = document.getElementById('displaySchoolId').innerText; const limit = document.getElementById('warningLimitInput').value || 5; const tbody = document.getElementById('warningsTableBody'); const loading = document.getElementById('loadingWarnings'); tbody.innerHTML = ""; loading.style.display = "block"; fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getWarningStudents", data: { schoolId: schoolId, limit: limit } }), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow' }).then(r => r.json()).then(res => { loading.style.display = "none"; if(res.status === "success") { if(res.data.length === 0) { tbody.innerHTML = `<tr><td colspan='5' style='text-align:center; padding: 20px;'>لا يوجد طلاب تجاوزوا <strong>${limit}</strong> أيام غياب.</td></tr>`; return; } res.data.forEach(stu => { let warningLevelName = "الأول"; if (stu.warnings >= 10 && stu.warnings < 15) warningLevelName = "الثاني"; if (stu.warnings >= 15) warningLevelName = "الثالث"; const tr = document.createElement('tr'); tr.style.borderBottom = "1px solid #e2e8f0"; tr.innerHTML = `<td style="padding:10px; font-weight:bold; color:#475569;">${stu.barcode}</td><td style="padding:10px; font-weight:bold; color:#1e293b;">${stu.name}</td><td style="padding:10px; color:#475569;">${stu.className}</td><td style="padding:10px; text-align:center; color:#ef4444; font-weight:bold; font-size:16px;">${stu.warnings}</td><td style="padding:10px; text-align:center;"><button onclick="openWarningModal('${stu.name}', '${stu.className}', ${stu.warnings}, '${warningLevelName}')" style="background:#f59e0b; color:white; border:none; padding:6px 12px; border-radius:5px; font-weight:bold; cursor:pointer; font-size: 14px;">إنذار ${warningLevelName}</button></td>`; tbody.appendChild(tr); }); } }); } function openWarningModal(name, className, absences, level) { currentWarningStudent = { name, className, absences, level }; document.getElementById('modalSchoolName').innerText = globalSchoolInfo.name; document.getElementById('modalSchoolGov').innerText = globalSchoolInfo.gov; document.getElementById('modalSchoolIdara').innerText = globalSchoolInfo.idara || "---"; document.getElementById('modalPrincipalName').innerText = globalSchoolInfo.manager; document.getElementById('modalStuName').innerText = name; document.getElementById('modalStuClass').innerText = className; document.getElementById('modalStuGrade').innerText = getGradeFromClass(className); document.getElementById('modalStuAbsence').innerText = absences; document.getElementById('modalWarningLevel').innerText = level; document.getElementById('modalCurrentDate').innerText = new Date().toLocaleDateString('ar-EG'); const sendBtn = document.getElementById('sendWarningBtn'); sendBtn.disabled = false; sendBtn.innerHTML = 'إرسال لولي الأمر <i class="fa-brands fa-telegram"></i>'; sendBtn.style.background = '#10b981'; document.getElementById('warningModal').style.display = 'flex'; } function closeWarningModal() { document.getElementById('warningModal').style.display = 'none'; } function sendWarningViaBot() { const sendBtn = document.getElementById('sendWarningBtn'); sendBtn.disabled = true; sendBtn.innerHTML = 'جاري الإرسال...'; fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "logWarningSent", data: { schoolId: document.getElementById('displaySchoolId').innerText, studentName: currentWarningStudent.name, level: "الإنذار " + currentWarningStudent.level } }) }).then(r=>r.json()).then(res=>{sendBtn.innerHTML='تم الإرسال بنجاح'; sendBtn.style.background='#94a3b8';}).catch(()=>{alert("خطأ");sendBtn.disabled=false;}); } const daysList = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'السبت']; function prepareScheduleView() { const tbody = document.getElementById('scheduleTableBody'); tbody.innerHTML = ''; daysList.forEach(day => { const tr = document.createElement('tr'); tr.style.borderBottom = "1px solid #cbd5e1"; if(day === 'السبت') { tr.id = 'satRow'; tr.style.display = 'none'; } let rowHtml = `<td style="padding:12px; font-weight:bold; background-color:#f1f5f9; border: 1px solid #cbd5e1;">${day}</td>`; for(let p=1; p<=7; p++) { rowHtml += `<td style="padding:5px; border: 1px solid #cbd5e1;"><input type="text" id="cell_${day}_${p}" class="schedule-input" placeholder="مثال: 1/1"></td>`; } rowHtml += `<td class="p8-col" style="padding:5px; border: 1px solid #cbd5e1; display:none;"><input type="text" id="cell_${day}_8" class="schedule-input" placeholder="مثال: 1/1"></td>`; tr.innerHTML = rowHtml; tbody.appendChild(tr); }); document.getElementById('toggleSat').checked = false; document.getElementById('togglePeriod8').checked = false; document.getElementById('saveScheduleBtn').style.display = 'none'; document.getElementById('scheduleTableContainer').style.display = 'none'; const select = document.getElementById('teacherScheduleSelect'); select.innerHTML = '<option value="">-- اختر المعلم --</option>'; fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getTeachers", data: { schoolId: document.getElementById('displaySchoolId').innerText } }) }).then(r => r.json()).then(res => { if(res.status === "success") { res.data.forEach(t => { select.innerHTML += `<option value="${t.code}" data-name="${t.name}">${t.name} (${t.code})</option>`; }); } }); } function toggleSaturday() { document.getElementById('satRow').style.display = document.getElementById('toggleSat').checked ? 'table-row' : 'none'; } function togglePeriod8() { document.querySelectorAll('.p8-col').forEach(el => el.style.display = document.getElementById('togglePeriod8').checked ? 'table-cell' : 'none'); } function fetchTeacherSchedule() { const teacherCode = document.getElementById('teacherScheduleSelect').value; const container = document.getElementById('scheduleTableContainer'); const btn = document.getElementById('saveScheduleBtn'); document.querySelectorAll('.schedule-input').forEach(input => input.value = ''); if(!teacherCode) { container.style.display = 'none'; btn.style.display = 'none'; return; } container.style.display = 'block'; btn.style.display = 'inline-block'; document.getElementById('loadingSchedule').style.display = "inline-block"; fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getSchedule", data: { schoolId: document.getElementById('displaySchoolId').innerText, teacherCode: teacherCode } }) }).then(r => r.json()).then(res => { document.getElementById('loadingSchedule').style.display = "none"; if(res.status === "success") { let hasSatData = false, hasP8Data = false; for (let slot in res.data) { let cleanSlot = slot.replace(" - الحصة ", "_"); let inputEl = document.getElementById("cell_" + cleanSlot); if(inputEl) { inputEl.value = res.data[slot]; if(slot.includes('السبت')) hasSatData = true; if(slot.includes('الحصة 8')) hasP8Data = true; } } if(hasSatData) { document.getElementById('toggleSat').checked = true; toggleSaturday(); } if(hasP8Data) { document.getElementById('togglePeriod8').checked = true; togglePeriod8(); } } }); } function saveClassSchedule() { const select = document.getElementById('teacherScheduleSelect'); const teacherCode = select.value; const teacherName = select.options[select.selectedIndex].getAttribute('data-name'); if(!teacherCode) { alert("اختر المعلم أولاً!"); return; } const scheduleRows = []; const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس']; if(document.getElementById('toggleSat').checked) days.push('السبت'); const maxP = document.getElementById('togglePeriod8').checked ? 8 : 7; days.forEach(day => { for(let p=1; p<=maxP; p++) { let val = document.getElementById(`cell_${day}_${p}`).value.trim(); if(val) { scheduleRows.push({ slot: day + " - الحصة " + p, className: val }); } } }); const btn = document.getElementById('saveScheduleBtn'); btn.innerHTML = 'جاري الحفظ...'; btn.disabled = true; sendFetchRequest({ action: "saveSchedule", data: { schoolId: document.getElementById('displaySchoolId').innerText, teacherCode: teacherCode, teacherName: teacherName, schedule: scheduleRows } }, null, () => { btn.innerHTML = 'حفظ الجدول'; btn.disabled = false; }, () => { btn.innerHTML = 'حفظ الجدول'; btn.disabled = false; }); }
+  </script>
+</body>
+</html>
