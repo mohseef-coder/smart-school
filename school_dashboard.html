@@ -348,11 +348,12 @@
   </div>
 
   <script>
-    // ========= ضع رابط السيرفر الجديد هنا (مهم جداً جداً بعد تحديث Code.gs) =========
+    // ========= رابط الـ Web App الخاص بك =========
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby0Q4NV6I6yXSdsjmbDvjQ6apv-9vTLEM4EolQfl3kXwl2asjutPpjexgjIi61QePly5Q/exec"; 
 
     let globalSchoolInfo = { name: "---", gov: "---", idara: "---", manager: "---" };
     let excusedStudents = new Set();
+    let currentWarningStudent = {};
     window.currentClassStudents = []; 
     window.currentClassName = "";
 
@@ -371,7 +372,7 @@
         fetchSchoolBasicInfo();
         fetchDashboardData(); 
       } else { 
-        window.location.href = "login.html"; 
+        window.location.href = "index.html"; 
       }
     });
 
@@ -387,12 +388,9 @@
       .then(r => r.json()).then(res => { if(res.status === "success") { globalSchoolInfo = res.info; } });
     }
 
-    // ==========================================
-    //  دالة موحدة لجلب إحصائيات الكروت وسجل الغياب معاً
-    // ==========================================
     function fetchDashboardData() {
       const schoolId = document.getElementById('displaySchoolId').innerText;
-      const targetDate = document.getElementById('absentDateInput').value; // التاريخ المختار
+      const targetDate = document.getElementById('absentDateInput').value; 
       
       const tbody = document.getElementById('todayAbsenceTableBody');
       const loadingAtt = document.getElementById('loadingAttendance');
@@ -414,13 +412,11 @@
       .then(r => r.json()).then(res => {
         loadingAtt.style.display = "none";
         if(res.status === "success") {
-          // تحديث الكروت
           document.getElementById('statStudentsCount').innerText = res.stats.students || "0";
           document.getElementById('statTeachersCount').innerText = res.stats.teachers || "0";
           document.getElementById('statClassesCount').innerText = res.stats.classes || "0";
           document.getElementById('statAbsenceCount').innerText = res.stats.todayAbsence || "0";
           
-          // تحديث جدول الغياب
           if(res.absences.length === 0) {
             tbody.innerHTML = `<tr><td colspan='4' style='text-align:center; color:#10b981; font-weight:bold; padding:15px;'>لم يتم رصد أي غياب ليوم (${targetDate}).</td></tr>`;
           } else {
@@ -437,9 +433,6 @@
       });
     }
 
-    // ==========================================
-    //           دوال التأمين الصحي الذكي
-    // ==========================================
     function toggleAllStudents(source) {
       const checkboxes = document.querySelectorAll('.student-cb'); checkboxes.forEach(cb => cb.checked = source.checked);
     }
@@ -453,7 +446,7 @@
 
       checkboxes.forEach((cb, index) => {
         const studentName = cb.getAttribute('data-name'); const barcode = cb.getAttribute('data-barcode');
-        excusedStudents.add(barcode); // حماية من الغياب
+        excusedStudents.add(barcode); 
 
         formsHtml += `
           <div style="font-family: Arial; padding: 30px; border: 2px solid #000; border-radius: 8px; max-width: 750px; margin: 20px auto; box-sizing: border-box; ${index < checkboxes.length - 1 ? 'page-break-after: always;' : ''}">
@@ -483,9 +476,6 @@
       alert("تمت الطباعة وتسجيل عذر طبي للطلاب المحددين (لن يتم تسجيلهم غياب اليوم).");
     }
 
-    // ==========================================
-    //       دوال طباعة هويات الفصل (مجمعة 8 في A4)
-    // ==========================================
     function printBulkStudentCards() {
       if(!window.currentClassStudents || window.currentClassStudents.length === 0) { alert("لا يوجد طلاب في هذا الفصل للطباعة!"); return; }
       let html = '<html dir="rtl"><head><title>طباعة هويات الفصل</title><style>body { font-family: Tahoma, sans-serif; margin: 0; padding: 0; background: #fff; } @page { size: A4; margin: 10mm; } .page { display: flex; flex-wrap: wrap; justify-content: space-between; align-content: flex-start; width: 100%; height: 277mm; page-break-after: always; } .card { width: 48%; height: 64mm; margin-bottom: 5mm; border: 2px solid #1d4ed8; border-radius: 12px; padding: 10px; box-sizing: border-box; text-align: center; display:flex; flex-direction:column; justify-content:center; align-items:center; } .card h2 { margin: 0 0 5px 0; font-size: 18px; color: #1e293b; border-bottom: 2px solid #1d4ed8; padding-bottom: 4px; width: 80%; } .card p { margin: 3px 0; font-size: 15px; font-weight: bold; } .card img { width: 100px; height: 100px; margin: 5px 0; }</style></head><body>';
@@ -508,9 +498,6 @@
       printWindow.document.write(`<html dir="rtl"><head><title>كارنيه الطالب</title></head><body style="font-family: 'Segoe UI', Tahoma, sans-serif; text-align: center; padding: 10px; background: #fff;"><div style="border: 3px double #000; border-radius: 12px; padding: 20px; width: 300px; margin: auto; box-shadow: 0 2px 5px rgba(0,0,0,0.1);"><h2 style="margin: 0 0 15px 0; color: #1d4ed8; font-size: 22px; border-bottom: 2px solid #1d4ed8; padding-bottom: 5px;">بطاقة هوية طالب</h2><div style="font-size: 18px; margin-bottom: 8px; text-align: right;"><strong>الاسم:</strong> ${name}</div><div style="font-size: 18px; margin-bottom: 8px; text-align: right;"><strong>الفصل:</strong> ${className}</div><img src="https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${barcode}" alt="QR Code" style="width: 130px; height: 130px; margin: 10px auto; display: block;"><p style="margin: 5px 0 0 0; font-size: 14px; letter-spacing: 2px; font-weight: bold;">${barcode}</p></div><script>setTimeout(() => { window.print(); window.close(); }, 1500);<\/script></body></html>`);
     }
 
-    // ==========================================
-    //           دوال سجل الغياب (وتسجيل الغياب)
-    // ==========================================
     function handleBarcodeScan(e) { if (e.key === 'Enter') { e.preventDefault(); checkStudentBarcode(); } }
     
     function checkStudentBarcode() { 
@@ -551,7 +538,7 @@
         alert(res.message); 
         document.getElementById('attendanceBarcode').value = ''; 
         document.getElementById('attendanceBarcode').focus(); 
-        fetchDashboardData(); // تحديث الجدول والكروت
+        fetchDashboardData(); 
       }); 
     }
 
@@ -560,9 +547,6 @@
       fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow' }).then(r => r.json()).then(res => { if(loadingElementId) document.getElementById(loadingElementId).style.display = "none"; if(res.status === "error" || res.message) alert(res.message); if(onSuccess && res.status !== "error") onSuccess(); }).catch(e => { if(loadingElementId) document.getElementById(loadingElementId).style.display = "none"; alert("حدث خطأ في الاتصال بالخادم!"); if(onError) onError(); });
     }
 
-    // ==========================================
-    //           بقية الدوال الأساسية للسيستم
-    // ==========================================
     function fetchClassesPageData() { fetchTeachersForDropdown(); fetchClasses(); }
     function fetchTeachersForDropdown() { const select = document.getElementById('classTeacherSelect'); select.innerHTML = '<option value="">-- اختر --</option>'; fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getTeachers", data: { schoolId: document.getElementById('displaySchoolId').innerText } }), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow' }).then(r => r.json()).then(res => { if(res.status === "success") { res.data.forEach(t => { const opt = document.createElement('option'); opt.value = t.code; opt.innerText = t.name; select.appendChild(opt); }); } }); }
     function fetchClasses() { const tbody = document.getElementById('classesTableBody'); const loading = document.getElementById('loadingClasses'); tbody.innerHTML = ""; loading.style.display = "block"; fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getClasses", data: { schoolId: document.getElementById('displaySchoolId').innerText } }), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow' }).then(r => r.json()).then(res => { loading.style.display = "none"; if(res.status === "success") { if(res.data.length === 0) { tbody.innerHTML = "<tr><td colspan='3' style='text-align:center;'>لا يوجد.</td></tr>"; return; } res.data.forEach(cls => { const tr = document.createElement('tr'); tr.style.borderBottom = "1px solid #e2e8f0"; tr.innerHTML = `<td style="padding:10px; font-weight:bold;">فصل ${cls.className}</td><td style="padding:10px;">${cls.teacherName}</td><td style="padding:10px; text-align:center;"><button style="background:#2563eb; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;" onclick="viewClassStudents('${cls.className}')">عرض الطلاب</button></td>`; tbody.appendChild(tr); }); } }); }
@@ -573,7 +557,96 @@
     function deleteTeacher(code, name) { if(confirm(`حذف المعلم (${name})؟`)) { sendFetchRequest({ action: "deleteTeacher", data: { schoolId: document.getElementById('displaySchoolId').innerText, teacherCode: code } }, 'loadingTeachers', fetchTeachers); } }
     function editTeacher(code, name, pass) { let newName = prompt("تعديل اسم المعلم:", name); if (!newName) return; let newPass = prompt("تعديل كلمة المرور:", pass); if (!newPass) return; sendFetchRequest({ action: "updateTeacher", data: { schoolId: document.getElementById('displaySchoolId').innerText, teacherCode: code, teacherName: newName, teacherPass: newPass } }, 'loadingTeachers', fetchTeachers); }
     function fetchStudents() { const tbody = document.getElementById('studentsTableBody'); const loading = document.getElementById('loadingStudents'); tbody.innerHTML = ""; loading.style.display = "block"; fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getStudents", data: { schoolId: document.getElementById('displaySchoolId').innerText } }), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow' }).then(r => r.json()).then(res => { loading.style.display = "none"; if(res.status === "success") { if(res.data.length === 0) { tbody.innerHTML = "<tr><td colspan='12' style='text-align:center;'>لا يوجد طلاب.</td></tr>"; return; } res.data.forEach(s => { const tr = document.createElement('tr'); tr.style.borderBottom = "1px solid #e2e8f0"; tr.innerHTML = `<td style="padding:10px;">${s.barcode}</td><td style="padding:10px; font-weight:bold;">${s.name}</td><td style="padding:10px;">${s.className}</td><td style="padding:10px;">${s.status}</td><td style="padding:10px;">${s.religion}</td><td style="padding:10px;">${s.nationalId}</td><td style="padding:10px; color:#2563eb;">${s.unifiedEmail || '---'}</td><td style="padding:10px;">${s.gender}</td><td style="padding:10px;">${s.gov}</td><td style="padding:10px;" dir="ltr">${s.dob}</td><td style="padding:10px; color:#ef4444; font-weight:bold; text-align:center;">${s.warnings}</td><td style="padding:10px; text-align:center;"><button class="action-btn" onclick="editStudent('${s.barcode}', '${s.name}', '${s.className}', '${s.status}', '${s.religion}', '${s.unifiedEmail}')"><i class="fa-solid fa-pen"></i></button><button class="action-btn delete-btn" onclick="deleteStudent('${s.barcode}', '${s.name}')"><i class="fa-solid fa-trash"></i></button></td>`; tbody.appendChild(tr); }); } }); }
-    const govCodes = { '01': 'القاهرة', '02': 'الإسكندرية', '03': 'بورسعيد', '04': 'السويس', '11': 'دمياط', '12': 'الدقهلية', '13': 'الشرقية', '14': 'القليوبية', '15': 'كفر الشيخ', '16': 'الغربية', '17': 'المنوفية', '18': 'البحيرة', '19': 'الإسماعيلية', '21': 'الجيزة', '22': 'بني سويف', '23': 'الفيوم', '24': 'المنيا', '25': 'أسيوط', '26': 'سوهاج', '27': 'قنا', '28': 'أسوان', '29': 'الأقصر', '31': 'البحر الأحمر', '32': 'الوادي الجديد', '33': 'مطروح', '34': 'شمال سيناء', '35': 'جنوب سيناء', '88': 'خارج الجمهورية' }; document.getElementById('stuNationalId').addEventListener('input', function() { let nid = this.value; if (nid.length === 14) { document.getElementById('autoGender').innerText = (parseInt(nid.charAt(12)) % 2 === 0) ? 'أنثى' : 'ذكر'; document.getElementById('autoGov').innerText = govCodes[nid.substring(7, 9)] || 'غير معروف'; document.getElementById('autoDob').innerText = `${nid.charAt(0) === '2' ? '19' : '20'}${nid.substring(1, 3)}/${nid.substring(3, 5)}/${nid.substring(5, 7)}`; } else { document.getElementById('autoGender').innerText = '---'; document.getElementById('autoDob').innerText = '---'; document.getElementById('autoGov').innerText = '---'; } }); document.getElementById('addStudentForm').addEventListener('submit', function(e) { e.preventDefault(); const submitBtn = this.querySelector('button[type="submit"]'); submitBtn.innerText = "جاري الحفظ..."; submitBtn.disabled = true; sendFetchRequest({ action: "addStudent", data: { schoolId: document.getElementById('displaySchoolId').innerText, name: document.getElementById('stuName').value, nationalId: document.getElementById('stuNationalId').value, class: document.getElementById('stuClass').value, unifiedEmail: document.getElementById('stuEmail').value, status: document.getElementById('stuStatus').value, religion: document.getElementById('stuReligion').value, gender: document.getElementById('autoGender').innerText, gov: document.getElementById('autoGov').innerText, dob: document.getElementById('autoDob').innerText } }, 'loadingStudents', () => { submitBtn.innerText = "حفظ"; submitBtn.disabled = false; document.getElementById('addStudentForm').reset(); document.getElementById('autoGender').innerText = '---'; document.getElementById('autoDob').innerText = '---'; document.getElementById('autoGov').innerText = '---'; fetchStudents(); }, () => { submitBtn.innerText = "حفظ"; submitBtn.disabled = false; }); }); function deleteStudent(barcode, name) { if(confirm(`حذف الطالب (${name})؟`)) { sendFetchRequest({ action: "deleteStudent", data: { schoolId: document.getElementById('displaySchoolId').innerText, barcode: barcode } }, 'loadingStudents', fetchStudents); } } function editStudent(barcode, name, className, status, religion, email) { let newName = prompt("تعديل اسم الطالب:", name); if (!newName) return; let newClass = prompt("تعديل الفصل:", className); if (!newClass) return; let newEmail = prompt("تعديل البريد:", email === '---' ? '' : email); if (newEmail === null) return; let newStatus = prompt("تعديل الحالة:", status); if (!newStatus) return; let newReligion = prompt("تعديل الديانة:", religion); if (!newReligion) return; sendFetchRequest({ action: "updateStudent", data: { schoolId: document.getElementById('displaySchoolId').innerText, barcode: barcode, name: newName, class: newClass, unifiedEmail: newEmail, status: newStatus, religion: newReligion } }, 'loadingStudents', fetchStudents); } function fetchWarningStudents() { const schoolId = document.getElementById('displaySchoolId').innerText; const limit = document.getElementById('warningLimitInput').value || 5; const tbody = document.getElementById('warningsTableBody'); const loading = document.getElementById('loadingWarnings'); tbody.innerHTML = ""; loading.style.display = "block"; fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getWarningStudents", data: { schoolId: schoolId, limit: limit } }), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow' }).then(r => r.json()).then(res => { loading.style.display = "none"; if(res.status === "success") { if(res.data.length === 0) { tbody.innerHTML = `<tr><td colspan='5' style='text-align:center; padding: 20px;'>لا يوجد طلاب تجاوزوا <strong>${limit}</strong> أيام غياب.</td></tr>`; return; } res.data.forEach(stu => { let warningLevelName = "الأول"; if (stu.warnings >= 10 && stu.warnings < 15) warningLevelName = "الثاني"; if (stu.warnings >= 15) warningLevelName = "الثالث"; const tr = document.createElement('tr'); tr.style.borderBottom = "1px solid #e2e8f0"; tr.innerHTML = `<td style="padding:10px; font-weight:bold; color:#475569;">${stu.barcode}</td><td style="padding:10px; font-weight:bold; color:#1e293b;">${stu.name}</td><td style="padding:10px; color:#475569;">${stu.className}</td><td style="padding:10px; text-align:center; color:#ef4444; font-weight:bold; font-size:16px;">${stu.warnings}</td><td style="padding:10px; text-align:center;"><button onclick="openWarningModal('${stu.name}', '${stu.className}', ${stu.warnings}, '${warningLevelName}')" style="background:#f59e0b; color:white; border:none; padding:6px 12px; border-radius:5px; font-weight:bold; cursor:pointer; font-size: 14px;">إنذار ${warningLevelName}</button></td>`; tbody.appendChild(tr); }); } }); } function openWarningModal(name, className, absences, level) { currentWarningStudent = { name, className, absences, level }; document.getElementById('modalSchoolName').innerText = globalSchoolInfo.name; document.getElementById('modalSchoolGov').innerText = globalSchoolInfo.gov; document.getElementById('modalSchoolIdara').innerText = globalSchoolInfo.idara || "---"; document.getElementById('modalPrincipalName').innerText = globalSchoolInfo.manager; document.getElementById('modalStuName').innerText = name; document.getElementById('modalStuClass').innerText = className; document.getElementById('modalStuGrade').innerText = getGradeFromClass(className); document.getElementById('modalStuAbsence').innerText = absences; document.getElementById('modalWarningLevel').innerText = level; document.getElementById('modalCurrentDate').innerText = new Date().toLocaleDateString('ar-EG'); const sendBtn = document.getElementById('sendWarningBtn'); sendBtn.disabled = false; sendBtn.innerHTML = 'إرسال لولي الأمر <i class="fa-brands fa-telegram"></i>'; sendBtn.style.background = '#10b981'; document.getElementById('warningModal').style.display = 'flex'; } function closeWarningModal() { document.getElementById('warningModal').style.display = 'none'; } function sendWarningViaBot() { const sendBtn = document.getElementById('sendWarningBtn'); sendBtn.disabled = true; sendBtn.innerHTML = 'جاري الإرسال...'; fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "logWarningSent", data: { schoolId: document.getElementById('displaySchoolId').innerText, studentName: currentWarningStudent.name, level: "الإنذار " + currentWarningStudent.level } }) }).then(r=>r.json()).then(res=>{sendBtn.innerHTML='تم الإرسال بنجاح'; sendBtn.style.background='#94a3b8';}).catch(()=>{alert("خطأ");sendBtn.disabled=false;}); } const daysList = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'السبت']; function prepareScheduleView() { const tbody = document.getElementById('scheduleTableBody'); tbody.innerHTML = ''; daysList.forEach(day => { const tr = document.createElement('tr'); tr.style.borderBottom = "1px solid #cbd5e1"; if(day === 'السبت') { tr.id = 'satRow'; tr.style.display = 'none'; } let rowHtml = `<td style="padding:12px; font-weight:bold; background-color:#f1f5f9; border: 1px solid #cbd5e1;">${day}</td>`; for(let p=1; p<=7; p++) { rowHtml += `<td style="padding:5px; border: 1px solid #cbd5e1;"><input type="text" id="cell_${day}_${p}" class="schedule-input" placeholder="مثال: 1/1"></td>`; } rowHtml += `<td class="p8-col" style="padding:5px; border: 1px solid #cbd5e1; display:none;"><input type="text" id="cell_${day}_8" class="schedule-input" placeholder="مثال: 1/1"></td>`; tr.innerHTML = rowHtml; tbody.appendChild(tr); }); document.getElementById('toggleSat').checked = false; document.getElementById('togglePeriod8').checked = false; document.getElementById('saveScheduleBtn').style.display = 'none'; document.getElementById('scheduleTableContainer').style.display = 'none'; const select = document.getElementById('teacherScheduleSelect'); select.innerHTML = '<option value="">-- اختر المعلم --</option>'; fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getTeachers", data: { schoolId: document.getElementById('displaySchoolId').innerText } }) }).then(r => r.json()).then(res => { if(res.status === "success") { res.data.forEach(t => { select.innerHTML += `<option value="${t.code}" data-name="${t.name}">${t.name} (${t.code})</option>`; }); } }); } function toggleSaturday() { document.getElementById('satRow').style.display = document.getElementById('toggleSat').checked ? 'table-row' : 'none'; } function togglePeriod8() { document.querySelectorAll('.p8-col').forEach(el => el.style.display = document.getElementById('togglePeriod8').checked ? 'table-cell' : 'none'); } function fetchTeacherSchedule() { const teacherCode = document.getElementById('teacherScheduleSelect').value; const container = document.getElementById('scheduleTableContainer'); const btn = document.getElementById('saveScheduleBtn'); document.querySelectorAll('.schedule-input').forEach(input => input.value = ''); if(!teacherCode) { container.style.display = 'none'; btn.style.display = 'none'; return; } container.style.display = 'block'; btn.style.display = 'inline-block'; document.getElementById('loadingSchedule').style.display = "inline-block"; fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getSchedule", data: { schoolId: document.getElementById('displaySchoolId').innerText, teacherCode: teacherCode } }) }).then(r => r.json()).then(res => { document.getElementById('loadingSchedule').style.display = "none"; if(res.status === "success") { let hasSatData = false, hasP8Data = false; for (let slot in res.data) { let cleanSlot = slot.replace(" - الحصة ", "_"); let inputEl = document.getElementById("cell_" + cleanSlot); if(inputEl) { inputEl.value = res.data[slot]; if(slot.includes('السبت')) hasSatData = true; if(slot.includes('الحصة 8')) hasP8Data = true; } } if(hasSatData) { document.getElementById('toggleSat').checked = true; toggleSaturday(); } if(hasP8Data) { document.getElementById('togglePeriod8').checked = true; togglePeriod8(); } } }); } function saveClassSchedule() { const select = document.getElementById('teacherScheduleSelect'); const teacherCode = select.value; const teacherName = select.options[select.selectedIndex].getAttribute('data-name'); if(!teacherCode) { alert("اختر المعلم أولاً!"); return; } const scheduleRows = []; const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس']; if(document.getElementById('toggleSat').checked) days.push('السبت'); const maxP = document.getElementById('togglePeriod8').checked ? 8 : 7; days.forEach(day => { for(let p=1; p<=maxP; p++) { let val = document.getElementById(`cell_${day}_${p}`).value.trim(); if(val) { scheduleRows.push({ slot: day + " - الحصة " + p, className: val }); } } }); const btn = document.getElementById('saveScheduleBtn'); btn.innerHTML = 'جاري الحفظ...'; btn.disabled = true; sendFetchRequest({ action: "saveSchedule", data: { schoolId: document.getElementById('displaySchoolId').innerText, teacherCode: teacherCode, teacherName: teacherName, schedule: scheduleRows } }, null, () => { btn.innerHTML = 'حفظ الجدول'; btn.disabled = false; }, () => { btn.innerHTML = 'حفظ الجدول'; btn.disabled = false; }); }
+    const govCodes = { '01': 'القاهرة', '02': 'الإسكندرية', '03': 'بورسعيد', '04': 'السويس', '11': 'دمياط', '12': 'الدقهلية', '13': 'الشرقية', '14': 'القليوبية', '15': 'كفر الشيخ', '16': 'الغربية', '17': 'المنوفية', '18': 'البحيرة', '19': 'الإسماعيلية', '21': 'الجيزة', '22': 'بني سويف', '23': 'الفيوم', '24': 'المنيا', '25': 'أسيوط', '26': 'سوهاج', '27': 'قنا', '28': 'أسوان', '29': 'الأقصر', '31': 'البحر الأحمر', '32': 'الوادي الجديد', '33': 'مطروح', '34': 'شمال سيناء', '35': 'جنوب سيناء', '88': 'خارج الجمهورية' }; document.getElementById('stuNationalId').addEventListener('input', function() { let nid = this.value; if (nid.length === 14) { document.getElementById('autoGender').innerText = (parseInt(nid.charAt(12)) % 2 === 0) ? 'أنثى' : 'ذكر'; document.getElementById('autoGov').innerText = govCodes[nid.substring(7, 9)] || 'غير معروف'; document.getElementById('autoDob').innerText = `${nid.charAt(0) === '2' ? '19' : '20'}${nid.substring(1, 3)}/${nid.substring(3, 5)}/${nid.substring(5, 7)}`; } else { document.getElementById('autoGender').innerText = '---'; document.getElementById('autoDob').innerText = '---'; document.getElementById('autoGov').innerText = '---'; } }); document.getElementById('addStudentForm').addEventListener('submit', function(e) { e.preventDefault(); const submitBtn = this.querySelector('button[type="submit"]'); submitBtn.innerText = "جاري الحفظ..."; submitBtn.disabled = true; sendFetchRequest({ action: "addStudent", data: { schoolId: document.getElementById('displaySchoolId').innerText, name: document.getElementById('stuName').value, nationalId: document.getElementById('stuNationalId').value, class: document.getElementById('stuClass').value, unifiedEmail: document.getElementById('stuEmail').value, status: document.getElementById('stuStatus').value, religion: document.getElementById('stuReligion').value, gender: document.getElementById('autoGender').innerText, gov: document.getElementById('autoGov').innerText, dob: document.getElementById('autoDob').innerText } }, 'loadingStudents', () => { submitBtn.innerText = "حفظ"; submitBtn.disabled = false; document.getElementById('addStudentForm').reset(); document.getElementById('autoGender').innerText = '---'; document.getElementById('autoDob').innerText = '---'; document.getElementById('autoGov').innerText = '---'; fetchStudents(); }, () => { submitBtn.innerText = "حفظ"; submitBtn.disabled = false; }); }); function deleteStudent(barcode, name) { if(confirm(`حذف الطالب (${name})؟`)) { sendFetchRequest({ action: "deleteStudent", data: { schoolId: document.getElementById('displaySchoolId').innerText, barcode: barcode } }, 'loadingStudents', fetchStudents); } } function editStudent(barcode, name, className, status, religion, email) { let newName = prompt("تعديل اسم الطالب:", name); if (!newName) return; let newClass = prompt("تعديل الفصل:", className); if (!newClass) return; let newEmail = prompt("تعديل البريد:", email === '---' ? '' : email); if (newEmail === null) return; let newStatus = prompt("تعديل الحالة:", status); if (!newStatus) return; let newReligion = prompt("تعديل الديانة:", religion); if (!newReligion) return; sendFetchRequest({ action: "updateStudent", data: { schoolId: document.getElementById('displaySchoolId').innerText, barcode: barcode, name: newName, class: newClass, unifiedEmail: newEmail, status: newStatus, religion: newReligion } }, 'loadingStudents', fetchStudents); } 
+
+    // =========================================================
+    //              الأكواد المحدثة لقائمة الخطر والإنذارات
+    // =========================================================
+    function fetchWarningStudents() { 
+      const schoolId = document.getElementById('displaySchoolId').innerText; 
+      const limit = document.getElementById('warningLimitInput').value || 5; 
+      const tbody = document.getElementById('warningsTableBody'); 
+      const loading = document.getElementById('loadingWarnings'); 
+      tbody.innerHTML = ""; 
+      loading.style.display = "block"; 
+      fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getWarningStudents", data: { schoolId: schoolId, limit: limit } }), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow' }).then(r => r.json()).then(res => { 
+        loading.style.display = "none"; 
+        if(res.status === "success") { 
+          if(res.data.length === 0) { 
+            tbody.innerHTML = `<tr><td colspan='5' style='text-align:center; padding: 20px;'>لا يوجد طلاب تجاوزوا <strong>${limit}</strong> أيام غياب.</td></tr>`; 
+            return; 
+          } 
+          res.data.forEach(stu => { 
+            let warningLevelName = "الأول"; 
+            if (stu.warnings >= 10 && stu.warnings < 15) warningLevelName = "الثاني"; 
+            if (stu.warnings >= 15) warningLevelName = "الثالث"; 
+            const tr = document.createElement('tr'); 
+            tr.style.borderBottom = "1px solid #e2e8f0"; 
+            tr.innerHTML = `<td style="padding:10px; font-weight:bold; color:#475569;">${stu.barcode}</td><td style="padding:10px; font-weight:bold; color:#1e293b;">${stu.name}</td><td style="padding:10px; color:#475569;">${stu.className}</td><td style="padding:10px; text-align:center; color:#ef4444; font-weight:bold; font-size:16px;">${stu.warnings}</td><td style="padding:10px; text-align:center;"><button onclick="openWarningModal('${stu.name}', '${stu.className}', ${stu.warnings}, '${warningLevelName}', '${stu.unifiedEmail || ''}')" style="background:#f59e0b; color:white; border:none; padding:6px 12px; border-radius:5px; font-weight:bold; cursor:pointer; font-size: 14px;">إنذار ${warningLevelName}</button></td>`; 
+            tbody.appendChild(tr); 
+          }); 
+        } 
+      }); 
+    } 
+
+    function getGradeFromClass(className) {
+      if (!className) return "---";
+      const gradeNum = className.split('/')[0];
+      if (gradeNum === '1') return "الأول";
+      if (gradeNum === '2') return "الثاني";
+      if (gradeNum === '3') return "الثالث";
+      return gradeNum;
+    }
+
+    function openWarningModal(name, className, absences, level, email) { 
+      currentWarningStudent = { name, className, absences, level, email }; 
+      document.getElementById('modalSchoolName').innerText = globalSchoolInfo.name; 
+      document.getElementById('modalSchoolGov').innerText = globalSchoolInfo.gov; 
+      document.getElementById('modalSchoolIdara').innerText = globalSchoolInfo.idara || "---"; 
+      document.getElementById('modalPrincipalName').innerText = globalSchoolInfo.manager; 
+      document.getElementById('modalStuName').innerText = name; 
+      document.getElementById('modalStuClass').innerText = className; 
+      document.getElementById('modalStuGrade').innerText = getGradeFromClass(className); 
+      document.getElementById('modalStuAbsence').innerText = absences; 
+      document.getElementById('modalWarningLevel').innerText = level; 
+      document.getElementById('modalCurrentDate').innerText = new Date().toLocaleDateString('ar-EG'); 
+      const sendBtn = document.getElementById('sendWarningBtn'); 
+      sendBtn.disabled = false; 
+      sendBtn.innerHTML = 'إرسال لولي الأمر <i class="fa-brands fa-telegram"></i>'; 
+      sendBtn.style.background = '#10b981'; 
+      document.getElementById('warningModal').style.display = 'flex'; 
+    } 
+
+    function closeWarningModal() { 
+      document.getElementById('warningModal').style.display = 'none'; 
+    } 
+
+    function sendWarningViaBot() { 
+      const sendBtn = document.getElementById('sendWarningBtn'); 
+      sendBtn.disabled = true; 
+      sendBtn.innerHTML = 'جاري الإرسال...'; 
+      fetch(WEB_APP_URL, { 
+        method: 'POST', 
+        body: JSON.stringify({ 
+          action: "logWarningSent", 
+          data: { 
+            schoolId: document.getElementById('displaySchoolId').innerText, 
+            unifiedEmail: currentWarningStudent.email,
+            studentName: currentWarningStudent.name, 
+            level: "الإنذار " + currentWarningStudent.level 
+          } 
+        }) 
+      }).then(r=>r.json()).then(res=>{
+        sendBtn.innerHTML='تم الإرسال بنجاح'; 
+        sendBtn.style.background='#94a3b8';
+      }).catch(()=>{
+        alert("حدث خطأ في الاتصال بالخادم.");
+        sendBtn.disabled=false;
+      }); 
+    } 
+
+    const daysList = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'السبت']; 
+    function prepareScheduleView() { const tbody = document.getElementById('scheduleTableBody'); tbody.innerHTML = ''; daysList.forEach(day => { const tr = document.createElement('tr'); tr.style.borderBottom = "1px solid #cbd5e1"; if(day === 'السبت') { tr.id = 'satRow'; tr.style.display = 'none'; } let rowHtml = `<td style="padding:12px; font-weight:bold; background-color:#f1f5f9; border: 1px solid #cbd5e1;">${day}</td>`; for(let p=1; p<=7; p++) { rowHtml += `<td style="padding:5px; border: 1px solid #cbd5e1;"><input type="text" id="cell_${day}_${p}" class="schedule-input" placeholder="مثال: 1/1"></td>`; } rowHtml += `<td class="p8-col" style="padding:5px; border: 1px solid #cbd5e1; display:none;"><input type="text" id="cell_${day}_8" class="schedule-input" placeholder="مثال: 1/1"></td>`; tr.innerHTML = rowHtml; tbody.appendChild(tr); }); document.getElementById('toggleSat').checked = false; document.getElementById('togglePeriod8').checked = false; document.getElementById('saveScheduleBtn').style.display = 'none'; document.getElementById('scheduleTableContainer').style.display = 'none'; const select = document.getElementById('teacherScheduleSelect'); select.innerHTML = '<option value="">-- اختر المعلم --</option>'; fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getTeachers", data: { schoolId: document.getElementById('displaySchoolId').innerText } }) }).then(r => r.json()).then(res => { if(res.status === "success") { res.data.forEach(t => { select.innerHTML += `<option value="${t.code}" data-name="${t.name}">${t.name} (${t.code})</option>`; }); } }); } function toggleSaturday() { document.getElementById('satRow').style.display = document.getElementById('toggleSat').checked ? 'table-row' : 'none'; } function togglePeriod8() { document.querySelectorAll('.p8-col').forEach(el => el.style.display = document.getElementById('togglePeriod8').checked ? 'table-cell' : 'none'); } function fetchTeacherSchedule() { const teacherCode = document.getElementById('teacherScheduleSelect').value; const container = document.getElementById('scheduleTableContainer'); const btn = document.getElementById('saveScheduleBtn'); document.querySelectorAll('.schedule-input').forEach(input => input.value = ''); if(!teacherCode) { container.style.display = 'none'; btn.style.display = 'none'; return; } container.style.display = 'block'; btn.style.display = 'inline-block'; document.getElementById('loadingSchedule').style.display = "inline-block"; fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "getSchedule", data: { schoolId: document.getElementById('displaySchoolId').innerText, teacherCode: teacherCode } }) }).then(r => r.json()).then(res => { document.getElementById('loadingSchedule').style.display = "none"; if(res.status === "success") { let hasSatData = false, hasP8Data = false; for (let slot in res.data) { let cleanSlot = slot.replace(" - الحصة ", "_"); let inputEl = document.getElementById("cell_" + cleanSlot); if(inputEl) { inputEl.value = res.data[slot]; if(slot.includes('السبت')) hasSatData = true; if(slot.includes('الحصة 8')) hasP8Data = true; } } if(hasSatData) { document.getElementById('toggleSat').checked = true; toggleSaturday(); } if(hasP8Data) { document.getElementById('togglePeriod8').checked = true; togglePeriod8(); } } }); } function saveClassSchedule() { const select = document.getElementById('teacherScheduleSelect'); const teacherCode = select.value; const teacherName = select.options[select.selectedIndex].getAttribute('data-name'); if(!teacherCode) { alert("اختر المعلم أولاً!"); return; } const scheduleRows = []; const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس']; if(document.getElementById('toggleSat').checked) days.push('السبت'); const maxP = document.getElementById('togglePeriod8').checked ? 8 : 7; days.forEach(day => { for(let p=1; p<=maxP; p++) { let val = document.getElementById(`cell_${day}_${p}`).value.trim(); if(val) { scheduleRows.push({ slot: day + " - الحصة " + p, className: val }); } } }); const btn = document.getElementById('saveScheduleBtn'); btn.innerHTML = 'جاري الحفظ...'; btn.disabled = true; sendFetchRequest({ action: "saveSchedule", data: { schoolId: document.getElementById('displaySchoolId').innerText, teacherCode: teacherCode, teacherName: teacherName, schedule: scheduleRows } }, null, () => { btn.innerHTML = 'حفظ الجدول'; btn.disabled = false; }, () => { btn.innerHTML = 'حفظ الجدول'; btn.disabled = false; }); }
   </script>
 </body>
 </html>
